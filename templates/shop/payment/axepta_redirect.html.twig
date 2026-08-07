@@ -1,0 +1,30 @@
+{#
+    Transition page between the shop and the hosted payment page.
+
+    Surchargeable : `templates/bundles/CylleneDigitalSyliusAxeptaPlugin/shop/payment/axepta_redirect.html.twig`.
+
+    Must stay usable without JavaScript - the `noscript` button is not decorative, it is the only
+    way to pay for a hardened browser or a screen reader.
+#}
+<!DOCTYPE html>
+<html lang="{{ app.request.locale|default('en')|split('_')|first }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="robots" content="noindex, nofollow">
+    <title>{{ 'cyllene_digital_sylius_axepta.ui.redirecting'|trans }}</title>
+</head>
+<body onload="document.forms[0].submit();">
+    <form method="post" action="{{ url }}">
+        {% for name, value in fields %}
+            <input type="hidden" name="{{ name }}" value="{{ value }}">
+        {% endfor %}
+
+        <p>{{ 'cyllene_digital_sylius_axepta.ui.redirecting'|trans }}</p>
+
+        <noscript>
+            <p>{{ 'cyllene_digital_sylius_axepta.ui.redirecting_no_script'|trans }}</p>
+            <button type="submit">{{ 'cyllene_digital_sylius_axepta.ui.pay'|trans }}</button>
+        </noscript>
+    </form>
+</body>
+</html>

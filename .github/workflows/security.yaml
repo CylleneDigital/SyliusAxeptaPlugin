@@ -1,0 +1,44 @@
+name: Security
+
+on:
+    push:
+        branches-ignore:
+            - 'dependabot/**'
+    pull_request: ~
+    schedule:
+        -
+            cron: "0 7 * * 1" # Every Monday at 7am
+    workflow_dispatch: ~
+
+jobs:
+    audit:
+        runs-on: ubuntu-latest
+
+        name: "Composer audit"
+
+        steps:
+            -
+                uses: actions/checkout@v7
+
+            -
+                name: Setup PHP
+                uses: shivammathur/setup-php@v2
+                with:
+                    php-version: "8.4"
+                    coverage: none
+
+            -
+                name: Install dependencies
+                run: composer update --no-interaction --no-progress --prefer-dist
+
+            # A known vulnerability in a payment plugin's dependency deserves to be seen on
+            # Monday morning, not at release time.
+            #
+            # `--abandoned=report` shows them without failing: since Composer 2.7, an abandoned
+            # package is enough to exit with code 1. Four are, among the Sylius skeleton's
+            # development dependencies, none of our doing and none carrying a flaw. Letting them
+            # block CI would amount to leaving it permanently red, hence to no longer looking the
+            # day a real vulnerability comes out.
+            -
+                name: Audit dependencies
+                run: composer audit --ansi --abandoned=report

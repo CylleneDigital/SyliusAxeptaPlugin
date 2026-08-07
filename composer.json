@@ -1,0 +1,111 @@
+{
+    "name": "cyllene-digital/sylius-axepta-plugin",
+    "type": "sylius-plugin",
+    "description": "Axepta BNP Paribas payment gateway for Sylius.",
+    "keywords": [
+        "sylius",
+        "sylius-plugin",
+        "payment",
+        "axepta",
+        "bnp-paribas",
+        "payment-gateway"
+    ],
+    "license": "MIT",
+    "require": {
+        "php": "^8.2",
+        "ext-hash": "*",
+        "ext-mbstring": "*",
+        "payum/core": "^1.7",
+        "psr/log": "^3.0",
+        "sylius/sylius": "^2.1",
+        "symfony/config": "^6.4 || ^7.4",
+        "symfony/dependency-injection": "^6.4 || ^7.4",
+        "symfony/form": "^6.4 || ^7.4",
+        "symfony/http-foundation": "^6.4 || ^7.4",
+        "symfony/http-kernel": "^6.4 || ^7.4",
+        "symfony/messenger": "^6.4 || ^7.4",
+        "symfony/routing": "^6.4 || ^7.4",
+        "symfony/service-contracts": "^3.0",
+        "symfony/validator": "^6.4 || ^7.4",
+        "symfony/yaml": "^6.4 || ^7.4",
+        "twig/twig": "^3.10"
+    },
+    "require-dev": {
+        "behat/behat": "^3.16",
+        "dbrekelmans/bdi": "^1.4",
+        "dmore/behat-chrome-extension": "^1.4",
+        "dmore/chrome-mink-driver": "^2.9",
+        "friends-of-behat/mink": "^1.11",
+        "friends-of-behat/mink-browserkit-driver": "^1.6",
+        "friends-of-behat/mink-debug-extension": "^2.1",
+        "friends-of-behat/mink-extension": "^2.7",
+        "friends-of-behat/page-object-extension": "^0.3",
+        "friends-of-behat/suite-settings-extension": "^1.1",
+        "friends-of-behat/symfony-extension": "^2.6",
+        "friends-of-behat/variadic-extension": "^1.6",
+        "nyholm/psr7": "^1.8",
+        "phpstan/phpstan": "^2.2",
+        "phpstan/phpstan-doctrine": "^2.0",
+        "phpstan/phpstan-webmozart-assert": "^2.0",
+        "phpunit/phpunit": "^10.5",
+        "sylius-labs/coding-standard": "^4.4",
+        "sylius-labs/suite-tags-extension": "~0.2",
+        "sylius/test-application": "^2.0.0@alpha",
+        "symfony/browser-kit": "^6.4 || ^7.4",
+        "symfony/debug-bundle": "^6.4 || ^7.4",
+        "symfony/dotenv": "^6.4 || ^7.4",
+        "symfony/http-client": "^6.4 || ^7.4",
+        "symfony/intl": "^6.4 || ^7.4",
+        "symfony/runtime": "^6.4 || ^7.4",
+        "symfony/web-profiler-bundle": "^6.4 || ^7.4",
+        "symfony/webpack-encore-bundle": "^2.2"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": false,
+            "php-http/discovery": false,
+            "phpstan/extension-installer": true,
+            "symfony/flex": true,
+            "symfony/runtime": true
+        }
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-main": "1.0.x-dev"
+        },
+        "symfony": {
+            "require": "^7.4"
+        },
+        "public-dir": "vendor/sylius/test-application/public"
+    },
+    "autoload": {
+        "psr-4": {
+            "CylleneDigital\\SyliusAxeptaPlugin\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\CylleneDigital\\SyliusAxeptaPlugin\\": [
+                "tests/",
+                "tests/TestApplication/src/"
+            ]
+        }
+    },
+    "scripts": {
+        "database-reset": [
+            "vendor/bin/console doctrine:database:drop --force --if-exists",
+            "vendor/bin/console doctrine:database:create",
+            "vendor/bin/console doctrine:migration:migrate -n",
+            "vendor/bin/console sylius:fixtures:load -n"
+        ],
+        "frontend-clear": [
+            "cd vendor/sylius/test-application && yarn install && yarn build",
+            "vendor/bin/console assets:install"
+        ],
+        "test-app-init": [
+            "@database-reset",
+            "@frontend-clear"
+        ]
+    }
+}

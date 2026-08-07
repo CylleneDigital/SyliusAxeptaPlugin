@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<container
+        xmlns="http://symfony.com/schema/dic/services"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://symfony.com/schema/dic/services http://symfony.com/schema/dic/services/services-1.0.xsd"
+>
+    <services>
+        <!--
+            PaymentRequest path (`usePayum = false`). The matching foundation is marked
+            `@experimental` by Sylius: these services may have to follow a contract change without
+            that being a compatibility break of our doing.
+        -->
+
+        <service id="cyllene_digital_sylius_axepta.command_provider.payment_request"
+                 class="CylleneDigital\SyliusAxeptaPlugin\PaymentRequest\CommandProvider\AxeptaActionsCommandProvider">
+            <argument type="tagged_locator"
+                      tag="cyllene_digital_sylius_axepta.command_provider.payment_request"
+                      index-by="action" />
+            <tag name="sylius.payment_request.command_provider" gateway-factory="axepta" />
+        </service>
+
+        <service id="cyllene_digital_sylius_axepta.command_provider.payment_request.capture"
+                 class="CylleneDigital\SyliusAxeptaPlugin\PaymentRequest\CommandProvider\CaptureCommandProvider">
+            <tag name="cyllene_digital_sylius_axepta.command_provider.payment_request" action="capture" />
+        </service>
+
+        <service id="cyllene_digital_sylius_axepta.command_provider.payment_request.notify"
+                 class="CylleneDigital\SyliusAxeptaPlugin\PaymentRequest\CommandProvider\NotifyCommandProvider">
+            <tag name="cyllene_digital_sylius_axepta.command_provider.payment_request" action="notify" />
+        </service>
+
+        <service id="cyllene_digital_sylius_axepta.command_provider.payment_request.status"
+                 class="CylleneDigital\SyliusAxeptaPlugin\PaymentRequest\CommandProvider\StatusCommandProvider">
+            <tag name="cyllene_digital_sylius_axepta.command_provider.payment_request" action="status" />
+        </service>
+
+        <service id="cyllene_digital_sylius_axepta.command_handler.payment_request.capture"
+                 class="CylleneDigital\SyliusAxeptaPlugin\PaymentRequest\CommandHandler\CaptureAxeptaPaymentRequestHandler">
+            <argument type="service" id="sylius.provider.payment_request" />
+            <argument type="service" id="cyllene_digital_sylius_axepta.provider.credentials" />
+            <argument type="service" id="cyllene_digital_sylius_axepta.protocol.payment_page_request_builder" />
+            <argument type="service" id="Sylius\Bundle\PayumBundle\Provider\PaymentDescriptionProviderInterface" />
+            <argument type="service" id="sylius_abstraction.state_machine" />
+            <argument type="service" id="router" />
+            <argument type="service" id="cyllene_digital_sylius_axepta.provider.return_url" />
+            <argument type="service" id="logger" />
+            <tag name="messenger.message_handler" bus="sylius.payment_request.command_bus" />
+            <tag name="monolog.logger" channel="%cyllene_digital_sylius_axepta.logger_channel%" />
+        </service>
+
+        <service id="cyllene_digital_sylius_axepta.command_handler.payment_request.notify"
+                 class="CylleneDigital\SyliusAxeptaPlugin\PaymentRequest\CommandHandler\NotifyAxeptaPaymentRequestHandler">
+            <argument type="service" id="sylius.provider.payment_request" />
+            <argument type="service" id="cyllene_digital_sylius_axepta.provider.credentials" />
+            <argument type="service" id="cyllene_digital_sylius_axepta.protocol.notification_verifier" />
+            <argument type="service" id="sylius_abstraction.state_machine" />
+            <argument type="service" id="sylius_payum.resolver.payment_request.doctrine_proxy_object" />
+            <argument type="service" id="logger" />
+            <tag name="messenger.message_handler" bus="sylius.payment_request.command_bus" />
+            <tag name="monolog.logger" channel="%cyllene_digital_sylius_axepta.logger_channel%" />
+        </service>
+
+        <service id="cyllene_digital_sylius_axepta.command_handler.payment_request.status"
+                 class="CylleneDigital\SyliusAxeptaPlugin\PaymentRequest\CommandHandler\StatusAxeptaPaymentRequestHandler">
+            <argument type="service" id="sylius.provider.payment_request" />
+            <argument type="service" id="sylius_abstraction.state_machine" />
+            <tag name="messenger.message_handler" bus="sylius.payment_request.command_bus" />
+        </service>
+
+        <service id="cyllene_digital_sylius_axepta.provider.payment_request.http_response"
+                 class="CylleneDigital\SyliusAxeptaPlugin\PaymentRequest\Provider\AxeptaHttpResponseProvider">
+            <argument type="service" id="cyllene_digital_sylius_axepta.renderer.auto_submit_form" />
+            <tag name="sylius.payment_request.provider.http_response" gateway-factory="axepta" />
+        </service>
+
+        <service id="cyllene_digital_sylius_axepta.provider.payment_request.notify_payment"
+                 class="CylleneDigital\SyliusAxeptaPlugin\PaymentRequest\Provider\AxeptaNotifyPaymentProvider">
+            <argument type="service" id="sylius.repository.payment" />
+            <argument type="service" id="cyllene_digital_sylius_axepta.provider.credentials" />
+            <argument type="service" id="cyllene_digital_sylius_axepta.protocol.notification_verifier" />
+            <argument type="service" id="CylleneDigital\SyliusAxeptaPlugin\Axepta\Protocol\TransactionIdGeneratorInterface" />
+            <argument type="service" id="sylius.provider.payment_request.gateway_factory_name" />
+            <argument>axepta</argument>
+            <!--
+                Explicit priority: in the test environment Sylius registers a
+                `DummyNotifyPaymentProvider` whose `supports()` answers true to everything and which
+                returns the oldest payment in the database. Without a priority it captures our
+                notifications and ties them to the wrong payment - silently, since the response
+                stays 200.
+            -->
+            <tag name="sylius.payment_request.payment_notify_provider" priority="10" />
+        </service>
+
+        <!-- Decoration: the other gateways of the host application keep their response. -->
+        <service id="cyllene_digital_sylius_axepta.provider.payment_request.notify_response"
+                 class="CylleneDigital\SyliusAxeptaPlugin\PaymentRequest\Provider\AxeptaNotifyResponseProvider"
+                 decorates="sylius.provider.payment_request.notify_response">
+            <argument type="service" id=".inner" />
+            <argument type="service" id="sylius.provider.payment_request.gateway_factory_name" />
+            <argument>axepta</argument>
+        </service>
+    </services>
+</container>

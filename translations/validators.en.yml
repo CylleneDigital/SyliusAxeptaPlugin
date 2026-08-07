@@ -1,0 +1,7 @@
+cyllene_digital_sylius_axepta:
+    merchant_id:
+        not_blank: 'Please enter the merchant ID provided by BNP Paribas.'
+    hmac_key:
+        not_blank: 'Please enter the HMAC key. Without it, no notification can be authenticated.'
+    blowfish_key:
+        not_blank: 'Please enter the Blowfish key. Without it, the payment page cannot read the request.'

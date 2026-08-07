@@ -1,0 +1,31 @@
+name: Suggest an improvement
+description: A feature or an enhancement
+labels: ["enhancement"]
+body:
+    - type: textarea
+      id: problem
+      attributes:
+          label: The need
+          description: "What concrete problem are you running into? Describe the situation, not the solution."
+      validations:
+          required: true
+    - type: textarea
+      id: proposal
+      attributes:
+          label: What you suggest
+    - type: dropdown
+      id: scope
+      attributes:
+          label: This concerns
+          options:
+              - The Axepta protocol (new field, new payment mean)
+              - The Sylius integration (back office, checkout, API)
+              - The documentation
+              - Something else
+      validations:
+          required: true
+    - type: markdown
+      attributes:
+          value: |
+              For a protocol change, point at the page of BNP's documentation describing it: that is
+              what makes it implementable without guessing.

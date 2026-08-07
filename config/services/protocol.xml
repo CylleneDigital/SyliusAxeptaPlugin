@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<container
+        xmlns="http://symfony.com/schema/dic/services"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://symfony.com/schema/dic/services http://symfony.com/schema/dic/services/services-1.0.xsd"
+>
+    <services>
+        <!-- Protocol layer: no dependency on Sylius nor on Payum. -->
+
+        <service id="cyllene_digital_sylius_axepta.crypto.blowfish_factory"
+                 class="CylleneDigital\SyliusAxeptaPlugin\Axepta\Crypto\BlowfishEcbFactory" />
+        <service id="CylleneDigital\SyliusAxeptaPlugin\Axepta\Crypto\BlowfishEcbFactoryInterface"
+                 alias="cyllene_digital_sylius_axepta.crypto.blowfish_factory" />
+
+        <service id="cyllene_digital_sylius_axepta.protocol.transaction_id_generator"
+                 class="CylleneDigital\SyliusAxeptaPlugin\Axepta\Protocol\PrefixedTransactionIdGenerator" />
+        <service id="CylleneDigital\SyliusAxeptaPlugin\Axepta\Protocol\TransactionIdGeneratorInterface"
+                 alias="cyllene_digital_sylius_axepta.protocol.transaction_id_generator" />
+
+        <service id="cyllene_digital_sylius_axepta.protocol.reference_provider"
+                 class="CylleneDigital\SyliusAxeptaPlugin\Axepta\Protocol\PaddedReferenceProvider" />
+        <service id="CylleneDigital\SyliusAxeptaPlugin\Axepta\Protocol\ReferenceProviderInterface"
+                 alias="cyllene_digital_sylius_axepta.protocol.reference_provider" />
+
+        <service id="cyllene_digital_sylius_axepta.protocol.payment_page_request_builder"
+                 class="CylleneDigital\SyliusAxeptaPlugin\Axepta\Protocol\PaymentPageRequestBuilder">
+            <argument type="service" id="CylleneDigital\SyliusAxeptaPlugin\Axepta\Protocol\TransactionIdGeneratorInterface" />
+            <argument type="service" id="CylleneDigital\SyliusAxeptaPlugin\Axepta\Protocol\ReferenceProviderInterface" />
+        </service>
+
+        <service id="cyllene_digital_sylius_axepta.protocol.notification_verifier"
+                 class="CylleneDigital\SyliusAxeptaPlugin\Axepta\Protocol\NotificationVerifier" />
+
+        <service id="cyllene_digital_sylius_axepta.provider.credentials"
+                 class="CylleneDigital\SyliusAxeptaPlugin\Provider\CredentialsProvider">
+            <argument type="service" id="CylleneDigital\SyliusAxeptaPlugin\Axepta\Crypto\BlowfishEcbFactoryInterface" />
+            <argument>%cyllene_digital_sylius_axepta.payment_page_url%</argument>
+        </service>
+    </services>
+</container>

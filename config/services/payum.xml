@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<container
+        xmlns="http://symfony.com/schema/dic/services"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://symfony.com/schema/dic/services http://symfony.com/schema/dic/services/services-1.0.xsd"
+>
+    <services>
+        <!--
+            `ContainerAwareCoreGatewayFactory` resolves the actions through `$container->get()`:
+            they must be public. A private action does not break at boot, it breaks on the first
+            payment.
+        -->
+        <defaults public="true" />
+
+        <service id="cyllene_digital_sylius_axepta.payum.gateway_factory_builder"
+                 class="CylleneDigital\SyliusAxeptaPlugin\Payum\AxeptaGatewayFactoryBuilder">
+            <argument type="service" id="cyllene_digital_sylius_axepta.provider.credentials" />
+            <tag name="payum.gateway_factory_builder" factory="axepta" />
+        </service>
+
+        <service id="cyllene_digital_sylius_axepta.payum.action.convert_payment"
+                 class="CylleneDigital\SyliusAxeptaPlugin\Payum\Action\ConvertPaymentAction">
+            <tag name="payum.action" factory="axepta" alias="cyllene_digital_sylius_axepta.convert_payment" />
+        </service>
+
+        <service id="cyllene_digital_sylius_axepta.payum.action.capture"
+                 class="CylleneDigital\SyliusAxeptaPlugin\Payum\Action\CaptureAction">
+            <argument type="service" id="payum" />
+            <argument type="service" id="cyllene_digital_sylius_axepta.provider.return_url" />
+            <argument type="service" id="cyllene_digital_sylius_axepta.protocol.payment_page_request_builder" />
+            <argument type="service" id="Sylius\Bundle\PayumBundle\Provider\PaymentDescriptionProviderInterface" />
+            <argument type="service" id="cyllene_digital_sylius_axepta.renderer.auto_submit_form" />
+            <argument type="service" id="logger" />
+            <tag name="payum.action" factory="axepta" alias="cyllene_digital_sylius_axepta.capture" />
+            <tag name="monolog.logger" channel="%cyllene_digital_sylius_axepta.logger_channel%" />
+        </service>
+
+        <service id="cyllene_digital_sylius_axepta.payum.action.notify"
+                 class="CylleneDigital\SyliusAxeptaPlugin\Payum\Action\NotifyAction">
+            <argument type="service" id="request_stack" />
+            <argument type="service" id="Sylius\Abstraction\StateMachine\StateMachineInterface" />
+            <argument type="service" id="cyllene_digital_sylius_axepta.protocol.notification_verifier" />
+            <argument type="service" id="logger" />
+            <tag name="payum.action" factory="axepta" alias="cyllene_digital_sylius_axepta.notify" />
+            <tag name="monolog.logger" channel="%cyllene_digital_sylius_axepta.logger_channel%" />
+        </service>
+
+        <service id="cyllene_digital_sylius_axepta.payum.action.status"
+                 class="CylleneDigital\SyliusAxeptaPlugin\Payum\Action\StatusAction">
+            <tag name="payum.action" factory="axepta" alias="cyllene_digital_sylius_axepta.status" />
+        </service>
+
+        <service id="cyllene_digital_sylius_axepta.payum.action.resolve_next_route"
+                 class="CylleneDigital\SyliusAxeptaPlugin\Payum\Action\ResolveNextRouteAction">
+            <tag name="payum.action" factory="axepta" alias="cyllene_digital_sylius_axepta.resolve_next_route" />
+        </service>
+    </services>
+</container>

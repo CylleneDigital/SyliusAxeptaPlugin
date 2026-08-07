@@ -1,0 +1,11 @@
+sylius_twig_hooks:
+    hooks:
+        # The hookable name, `axepta_fields`, is part of the public contract: it is the anchor an
+        # integrator uses to disable or replace this rendering (`enabled: false` in their own
+        # configuration). Renaming it would be a silent BC break.
+        'sylius_admin.payment_method.create.content.form.sections.gateway_configuration.axepta':
+            axepta_fields:
+                template: '@CylleneDigitalSyliusAxeptaPlugin/admin/payment_method/gateway_configuration/axepta.html.twig'
+        'sylius_admin.payment_method.update.content.form.sections.gateway_configuration.axepta':
+            axepta_fields:
+                template: '@CylleneDigitalSyliusAxeptaPlugin/admin/payment_method/gateway_configuration/axepta.html.twig'

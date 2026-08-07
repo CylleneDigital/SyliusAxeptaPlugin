@@ -1,0 +1,34 @@
+imports:
+    - { resource: "@CylleneDigitalSyliusAxeptaPlugin/config/config.yaml" }
+    - { resource: "services_test.php" }
+
+# The test application is always served behind a proxy - a Docker reverse proxy locally, a
+# public tunnel during acceptance runs. Without these settings, the return and notification URLs
+# go out to BNP with the container host and scheme, which the bank cannot reach.
+#
+# `x-forwarded-host` is not among Symfony's default trusted headers; yet it is the only one
+# carrying the tunnel domain.
+#
+# The setting lives here rather than in the `TRUSTED_PROXIES` environment variable:
+# `vendor/sylius/test-application/public/index.php` reads it and calls `HEADER_X_FORWARDED_ALL`, a
+# constant removed in Symfony 6 - filling it in breaks the page with a fatal error.
+framework:
+    trusted_proxies: 'private_ranges'
+    trusted_headers: ['x-forwarded-for', 'x-forwarded-host', 'x-forwarded-proto', 'x-forwarded-port']
+    translator:
+        paths:
+            - '%kernel.project_dir%/../../../tests/TestApplication/translations'
+
+twig:
+    paths:
+        '%kernel.project_dir%/../../../tests/TestApplication/templates': ~
+
+# Logging is part of the plugin's contract, event by event. The test application
+# only keeps the `error` ones: without this collector, nothing lets us assert that an expected
+# event was traced, nor with which message.
+when@test:
+    monolog:
+        handlers:
+            axepta_assertions:
+                type: test
+                channels: [axepta]

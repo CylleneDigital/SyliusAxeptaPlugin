@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<container
+        xmlns="http://symfony.com/schema/dic/services"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://symfony.com/schema/dic/services http://symfony.com/schema/dic/services/services-1.0.xsd"
+>
+    <services>
+        <service id="cyllene_digital_sylius_axepta.provider.return_url"
+                 class="CylleneDigital\SyliusAxeptaPlugin\Provider\ReturnUrlProvider">
+            <argument type="service" id="router" />
+            <argument>%kernel.secret%</argument>
+        </service>
+
+        <service id="CylleneDigital\SyliusAxeptaPlugin\Controller\ReturnFromPaymentPageAction"
+                 class="CylleneDigital\SyliusAxeptaPlugin\Controller\ReturnFromPaymentPageAction"
+                 public="true">
+            <argument type="service" id="sylius.repository.payment" />
+            <argument type="service" id="cyllene_digital_sylius_axepta.provider.return_url" />
+            <argument type="service" id="router" />
+            <tag name="controller.service_arguments" />
+        </service>
+    </services>
+</container>

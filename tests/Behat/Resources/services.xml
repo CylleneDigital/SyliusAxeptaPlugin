@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<container xmlns="http://symfony.com/schema/dic/services" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://symfony.com/schema/dic/services http://symfony.com/schema/dic/services/services-1.0.xsd">
+    <services>
+        <defaults public="true" />
+
+        <!-- Pages: they only add the Axepta configuration fields to the Sylius form. -->
+        <service id="cyllene_digital_sylius_axepta.behat.page.admin.payment_method.create"
+                 class="Tests\CylleneDigital\SyliusAxeptaPlugin\Behat\Page\Admin\PaymentMethod\AxeptaCreatePage"
+                 parent="sylius.behat.page.admin.crud.create">
+            <argument type="string">sylius_admin_payment_method_create</argument>
+        </service>
+
+        <service id="cyllene_digital_sylius_axepta.behat.page.admin.payment_method.update"
+                 class="Tests\CylleneDigital\SyliusAxeptaPlugin\Behat\Page\Admin\PaymentMethod\AxeptaUpdatePage"
+                 parent="sylius.behat.page.admin.crud.update">
+            <argument type="string">sylius_admin_payment_method_update</argument>
+        </service>
+
+        <service id="cyllene_digital_sylius_axepta.behat.mocker.payment_page"
+                 class="Tests\CylleneDigital\SyliusAxeptaPlugin\Behat\Mocker\AxeptaPaymentPageMocker">
+            <argument type="service" id="cyllene_digital_sylius_axepta.provider.credentials" />
+        </service>
+
+        <service id="cyllene_digital_sylius_axepta.behat.context.setup.axepta"
+                 class="Tests\CylleneDigital\SyliusAxeptaPlugin\Behat\Context\Setup\AxeptaContext">
+            <argument type="service" id="sylius.behat.shared_storage" />
+            <argument type="service" id="sylius.factory.payment_method" />
+            <argument type="service" id="sylius.factory.gateway_config" />
+            <argument type="service" id="sylius.repository.payment_method" />
+        </service>
+
+        <!--
+            The Sylius context receives a hard-coded collection of factories, holding only
+            `offline`: it therefore cannot build the creation URL for ours, and opens
+            "/admin/payment-methods/new/" with no parameter - a 404. We redeclare it with the
+            extended collection rather than writing our own creation steps.
+        -->
+        <service id="cyllene_digital_sylius_axepta.behat.context.ui.admin.managing_payment_methods"
+                 class="Sylius\Behat\Context\Ui\Admin\ManagingPaymentMethodsContext">
+            <argument type="service" id="cyllene_digital_sylius_axepta.behat.page.admin.payment_method.create" />
+            <argument type="service" id="sylius.behat.page.admin.payment_method.index" />
+            <argument type="service" id="cyllene_digital_sylius_axepta.behat.page.admin.payment_method.update" />
+            <argument type="service" id="sylius.behat.current_page_resolver" />
+            <argument type="collection">
+                <argument key="offline">Offline</argument>
+                <argument key="axepta">Axepta - BNP Paribas</argument>
+            </argument>
+        </service>
+
+        <service id="cyllene_digital_sylius_axepta.behat.context.ui.admin.managing_payment_method"
+                 class="Tests\CylleneDigital\SyliusAxeptaPlugin\Behat\Context\Ui\Admin\ManagingAxeptaPaymentMethodContext">
+            <argument type="service" id="cyllene_digital_sylius_axepta.behat.page.admin.payment_method.create" />
+            <argument type="service" id="cyllene_digital_sylius_axepta.behat.page.admin.payment_method.update" />
+            <argument type="service" id="sylius.behat.current_page_resolver" />
+            <argument type="service" id="sylius.behat.shared_storage" />
+        </service>
+
+        <service id="cyllene_digital_sylius_axepta.behat.context.ui.shop.payment"
+                 class="Tests\CylleneDigital\SyliusAxeptaPlugin\Behat\Context\Ui\Shop\AxeptaPaymentContext">
+            <argument type="service" id="sylius.behat.shared_storage" />
+            <argument type="service" id="cyllene_digital_sylius_axepta.behat.mocker.payment_page" />
+            <argument type="service" id="kernel" />
+            <argument type="service" id="sylius.repository.payment_request" />
+            <argument type="service" id="doctrine.orm.entity_manager" />
+            <argument type="service" id="sylius.factory.payment_request" />
+            <argument type="service" id="sylius.announcer.payment_request" />
+        </service>
+    </services>
+</container>

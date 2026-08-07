@@ -1,0 +1,17 @@
+{% set form = hookable_metadata.context.form %}
+
+<div class="col-12 col-md-4">
+    {{ form_row(form.gatewayConfig.config.merchant_id) }}
+</div>
+<div class="col-12 col-md-4">
+    {{ form_row(form.gatewayConfig.config.hmac_key) }}
+</div>
+<div class="col-12 col-md-4">
+    {{ form_row(form.gatewayConfig.config.blowfish_key) }}
+</div>
+<div class="col-12 col-md-4">
+    {{ form_row(form.gatewayConfig.config.language) }}
+</div>
+<div class="col-12 col-md-8">
+    {{ form_row(form.gatewayConfig.config.test_mode) }}
+</div>

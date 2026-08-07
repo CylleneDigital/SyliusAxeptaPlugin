@@ -1,0 +1,18 @@
+# Shop routes of the plugin.
+
+# The customer coming back from the hosted payment page.
+#
+# GET *and* POST: the bank uses one or the other depending on the 3-D Secure journey, and its
+# documentation asks to handle both.
+#
+# Both parameters are constrained to a safe alphabet - digits and hexadecimal. The order token has
+# no business travelling to a third party, and BNP's documentation does not state which characters
+# are accepted in a return URL.
+cyllene_digital_sylius_axepta_shop_return:
+    path: /axepta/return/{paymentId}/{signature}
+    methods: [GET, POST]
+    requirements:
+        paymentId: \d+
+        signature: '[0-9a-f]{32}'
+    defaults:
+        _controller: CylleneDigital\SyliusAxeptaPlugin\Controller\ReturnFromPaymentPageAction

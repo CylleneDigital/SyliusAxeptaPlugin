@@ -1,0 +1,18 @@
+# Surcharge de l'application de test - pas une traduction du plugin.
+#
+# `OrderDesc` est composé par le fournisseur de description de Sylius, sur les deux chemins de
+# paiement. Or la description livrée par Sylius est en ASCII pur, dans toutes les locales : la
+# conversion ISO-8859-1 du payload - la non-conformité la plus insidieuse du protocole, celle qui ne
+# casse qu'une fraction des commandes - ne pouvait donc pas être éprouvée contre la plateforme
+# réelle.
+#
+# La chaîne ci-dessous n'imite aucun produit : elle annonce ce qu'elle est, parce qu'elle s'affiche
+# telle quelle sur la page de paiement BNP et dans le back-office de la banque. Elle mélange
+# délibérément deux familles de caractères :
+#   · représentables en ISO-8859-1 : é, à, û, « »
+#   · non représentables : — (tiret cadratin, U+2014)
+# La seconde vérifie que la conversion dégrade proprement, en `?`, au lieu de rompre le payload.
+sylius:
+    payum_action:
+        payment:
+            description: '{items, plural, one {Commande — contrôle d''encodage « éàû » : # article pour un total de {total}} other {Commande — contrôle d''encodage « éàû » : # articles pour un total de {total}}}'

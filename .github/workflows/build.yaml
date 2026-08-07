@@ -1,0 +1,142 @@
+name: Build
+
+on:
+    # `paths-ignore` only covers the `.md` files at the root: the pattern does not cross `/`, so a
+    # change under `docs/` does re-run the matrix.
+    #
+    # ⚠️ It has a blind spot: on a push replacing one history with another without a common ancestor
+    # - an orphan branch force-pushed, for instance - GitHub computes no list of changed files and
+    # the filter works against us: the workflow does not start at all, without reporting anything.
+    # `workflow_dispatch` is then the only way out, and it only appears in the interface if this
+    # file already exists on the default branch.
+    push:
+        branches-ignore:
+            - 'dependabot/**'
+        paths-ignore:
+            - "*.md"
+    pull_request:
+        paths-ignore:
+            - "*.md"
+    release:
+        types: [created]
+    schedule:
+        -
+            cron: "0 1 * * 6" # Run at 1am every Saturday
+    workflow_dispatch: ~
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    tests:
+        runs-on: ubuntu-latest
+
+        name: "Sylius ${{ matrix.sylius }}, PHP ${{ matrix.php }}, Symfony ${{ matrix.symfony }}, ${{ matrix.database }}"
+
+        strategy:
+            fail-fast: false
+            matrix:
+                # PHP 8.5 is in the matrix although the skeleton stops at 8.3: the first project
+                # that will install this plugin runs on it. Should it break on a third-party
+                # dependency rather than on our code, move the line to `continue-on-error` with a
+                # comment - do not drop it from the matrix.
+                php: ["8.2", "8.3", "8.4", "8.5"]
+                symfony: ["^6.4", "^7.4"]
+                # The floor is 2.1 rather than 2.0 for two reasons lying with Sylius itself. Its
+                # Behat cart context did not restore the security token before 2.1, so a scenario
+                # logging the customer in before filling their cart cannot pass on 2.0. And 2.0
+                # pins Behat versions predating PHP 8.5, which Composer therefore cannot install
+                # together.
+                sylius: ["~2.1.0", "~2.2.0"]
+                # The plugin creates no table and writes no query: a single database is enough on
+                # the main matrix. The cycles saved cover 4 PHP versions.
+                database: ["mysql:8.4"]
+                node: ["22.x"]
+
+                include:
+                    - php: "8.4"
+                      symfony: "^7.4"
+                      sylius: "~2.2.0"
+                      database: "mariadb:11.4"
+                      node: "22.x"
+                    - php: "8.4"
+                      symfony: "^7.4"
+                      sylius: "~2.2.0"
+                      database: "postgres:17"
+                      node: "22.x"
+
+        env:
+            APP_ENV: test
+
+        steps:
+            -
+                uses: actions/checkout@v7
+
+            -
+                name: Build Sylius Test Application
+                uses: SyliusLabs/BuildTestAppAction@v4
+                with:
+                    # The Behat scenarios open no browser - `symfony` session, no `@javascript`
+                    # tag - but the admin pages render the Webpack Encore entries: without a
+                    # front-end build they answer 500 without saying why.
+                    e2e_js: "yes"
+                    cache_key: "${{ runner.os }}-php-${{ matrix.php }}-composer-${{ hashFiles('**/composer.json') }}"
+                    cache_restore_key: "${{ runner.os }}-php-${{ matrix.php }}-composer-"
+                    database: "${{ matrix.database }}"
+                    node_version: "${{ matrix.node }}"
+                    php_version: "${{ matrix.php }}"
+                    sylius_version: "${{ matrix.sylius }}"
+                    symfony_version: "${{ matrix.symfony }}"
+
+            # Cheapest first: the cryptography runs in hundredths of a second and catches the most
+            # serious regressions.
+            -
+                name: Run unit tests
+                run: vendor/bin/phpunit --colors=always --testsuite=unit
+
+            -
+                name: Validate composer.json
+                run: composer validate --ansi --strict
+
+            # Catches wiring errors before the tests that depend on them: on a plugin, that is the
+            # most frequent class of bug.
+            -
+                name: Validate container
+                run: vendor/bin/console lint:container
+
+            # Sylius encrypts the gateway configuration: without this key, every test writing to
+            # the database fails on "Cannot read keyfile", an error that does not say its name.
+            -
+                name: Generate the payment encryption key
+                run: vendor/bin/console sylius:payment:generate-key
+
+            -
+                name: Run PHPStan
+                run: vendor/bin/phpstan analyse --ansi --no-progress
+
+            -
+                name: Run ECS
+                run: vendor/bin/ecs check --ansi --no-progress-bar
+
+            -
+                name: Run non-unit tests
+                run: vendor/bin/phpunit --colors=always --testsuite=non-unit
+
+            -
+                name: Run Behat
+                run: vendor/bin/behat --colors --strict --no-interaction -f progress
+
+            -
+                name: Upload Behat logs
+                uses: actions/upload-artifact@v7
+                if: failure()
+                with:
+                    # No colon: `upload-artifact` rejects them, and `matrix.database` carries one.
+                    # The name must also discriminate Symfony, otherwise two jobs of the matrix
+                    # fight over the same artifact. `job-index` guarantees uniqueness.
+                    name: "behat-logs-sylius${{ matrix.sylius }}-symfony${{ matrix.symfony }}-php${{ matrix.php }}-job${{ strategy.job-index }}"
+                    path: etc/build/
+                    if-no-files-found: ignore
+                    compression-level: 6
+                    overwrite: true

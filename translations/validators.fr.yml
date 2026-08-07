@@ -1,0 +1,7 @@
+cyllene_digital_sylius_axepta:
+    merchant_id:
+        not_blank: 'Veuillez saisir l''identifiant marchand fourni par BNP Paribas.'
+    hmac_key:
+        not_blank: 'Veuillez saisir la clé HMAC. Sans elle, aucune notification ne peut être authentifiée.'
+    blowfish_key:
+        not_blank: 'Veuillez saisir la clé Blowfish. Sans elle, la page de paiement ne peut pas lire la requête.'

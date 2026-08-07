@@ -1,0 +1,17 @@
+# Test-application override - not a plugin translation.
+#
+# `OrderDesc` is composed by Sylius' payment description provider, on both payment paths. The
+# description Sylius ships is pure ASCII in every locale, so the ISO-8859-1 conversion of the
+# payload - the protocol's most insidious non-conformance, the one that only breaks a fraction of
+# orders - could not be exercised against the real platform.
+#
+# The string below imitates no product: it announces what it is, because it shows up as-is on the
+# BNP payment page and in the bank's back office. It deliberately mixes two families of characters:
+#   · representable in ISO-8859-1: é, à, û
+#   · not representable: — (em dash, U+2014) and the curly quotes “ ” (U+201C/U+201D)
+# The second family checks that the conversion degrades cleanly, to `?`, instead of corrupting the
+# payload.
+sylius:
+    payum_action:
+        payment:
+            description: '{items, plural, one {Order — encoding check “éàû”: # item for a total of {total}} other {Order — encoding check “éàû”: # items for a total of {total}}}'

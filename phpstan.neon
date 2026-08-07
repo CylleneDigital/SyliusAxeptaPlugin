@@ -1,0 +1,21 @@
+parameters:
+    level: max
+
+    # A type coming from a PHPDoc is a documentation promise, not a guarantee from the engine. The
+    # plugin runs on two Symfony majors whose signatures differ: `TreeBuilder` annotates its root
+    # finely in 7.x and declares a union in 6.4. Without this setting, the assertion that makes
+    # `Configuration.php` analysable on 6.4 is reported as always true on 7.4, and being green on
+    # both sides becomes impossible.
+    treatPhpDocTypesAsCertain: false
+
+    paths:
+        - src
+        - tests/Unit
+        - tests/Integration
+        - tests/Functional
+        - tests/Behat
+        - tests/Utils
+
+    excludePaths:
+        # Test dependencies
+        - 'tests/TestApplication/src/**.php'

@@ -1,0 +1,63 @@
+name: Report a bug
+description: Unexpected behaviour of the plugin
+labels: ["bug"]
+body:
+    - type: markdown
+      attributes:
+          value: |
+              ⚠️ **A security flaw is not reported here.** See [SECURITY.md](https://github.com/CylleneDigital/SyliusAxeptaPlugin/blob/main/SECURITY.md).
+
+              **Never include** a real key, signature or merchant identifier in a public issue - not
+              even truncated.
+    - type: input
+      id: plugin-version
+      attributes:
+          label: Plugin version
+      validations:
+          required: true
+    - type: input
+      id: sylius-version
+      attributes:
+          label: Sylius version
+      validations:
+          required: true
+    - type: input
+      id: php-version
+      attributes:
+          label: PHP version
+      validations:
+          required: true
+    - type: dropdown
+      id: path
+      attributes:
+          label: Payment path
+          options:
+              - Payum (usePayum = true)
+              - PaymentRequest (usePayum = false)
+              - I do not know
+      validations:
+          required: true
+    - type: textarea
+      id: expected
+      attributes:
+          label: Expected behaviour
+      validations:
+          required: true
+    - type: textarea
+      id: actual
+      attributes:
+          label: Observed behaviour
+      validations:
+          required: true
+    - type: textarea
+      id: steps
+      attributes:
+          label: Steps to reproduce
+      validations:
+          required: true
+    - type: textarea
+      id: logs
+      attributes:
+          label: Logs from the `axepta` channel
+          description: "Redact every sensitive value before pasting."
+          render: text
