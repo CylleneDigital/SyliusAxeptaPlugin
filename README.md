@@ -11,11 +11,6 @@ Integration of the **Axepta BNP Paribas** payment gateway for **Sylius 2**.
 > neither affiliated with, sponsored by, nor endorsed by BNP Paribas. No BNP Paribas or Axepta logo
 > ships with this package.
 
-> 🚧 **No version has been released yet.** The plugin is functional, covered by tests, and **has been
-> exercised against the real BNP platform**: success and refusal, on both payment paths, notification
-> and signature verification included. What is missing before a `v1.0.0` is editorial, not technical.
-> See [status](#status) below.
-
 ## Compatibility
 
 | | Versions |

@@ -24,9 +24,10 @@ its release date.
 
 | Version | Support |
 |---|---|
-| - | No version has been released yet |
+| `1.x` | Bug and security fixes |
 
-The definitive support policy is published in the README from `v1.0.0` onwards.
+The full policy, including what happens to a major version once the next one is out, is in
+[`docs/versioning.md`](docs/versioning.md).
 
 ## Disclosure
 
