@@ -1,3 +1,5 @@
+<img src="docs/images/banner.svg" alt="Sylius Axepta BNP Paribas Plugin" width="100%">
+
 # Sylius Axepta BNP Paribas Plugin
 
 [![License](https://img.shields.io/packagist/l/cyllene-digital/sylius-axepta-plugin)](LICENSE)
@@ -13,7 +15,7 @@ Integration of the **Axepta BNP Paribas** payment gateway for **Sylius 2**.
 
 ## Compatibility
 
-| | Versions |
+| Component | Versions |
 |---|---|
 | PHP | `^8.2` |
 | Sylius | `^2.1` |
@@ -79,13 +81,10 @@ than failing.
 composer require cyllene-digital/sylius-axepta-plugin
 ```
 
-Add the bundle to `config/bundles.php`:
+The Flex recipe registers the bundle and imports the routes. What it cannot do for you - the payment
+encryption key and the trusted proxies - breaks payments **without an error message** when skipped.
 
-```php
-CylleneDigital\SyliusAxeptaPlugin\CylleneDigitalSyliusAxeptaPlugin::class => ['all' => true],
-```
-
-The details, including the infrastructure points not to forget:
+Every step, and the infrastructure points not to forget:
 [`docs/installation.md`](docs/installation.md).
 
 ## Configuration
@@ -102,7 +101,7 @@ Every setting, the key rotation procedure and its pitfall:
 
 ## Documentation
 
-| | |
+| Page | What it covers |
 |---|---|
 | [Installation](docs/installation.md) | Bundle, routes, encryption key, trusted proxies, and the infrastructure points nobody handles unless they are named |
 | [Configuration](docs/configuration.md) | Gateway settings, key rotation, logging, customising the redirect page |
@@ -151,4 +150,7 @@ public Axepta BNP Paribas documentation (<https://docs.axepta.bnpparibas>).
 
 ---
 
-Package: `cyllene-digital/sylius-axepta-plugin` - Maintainer: Cyllene
+Package: [`cyllene-digital/sylius-axepta-plugin`](https://packagist.org/packages/cyllene-digital/sylius-axepta-plugin)
+
+Maintained by [Cyllene](https://www.groupe-cyllene.com), on GitHub as
+[@CylleneDigital](https://github.com/CylleneDigital)
