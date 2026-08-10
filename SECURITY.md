@@ -8,7 +8,7 @@ has a direct financial impact, so please report it privately.
 **Do not open a public issue.** Use either of the two private channels:
 
 - [GitHub security advisory](https://github.com/CylleneDigital/SyliusAxeptaPlugin/security/advisories/new)
-  ("Report a vulnerability");
+  ("Report a vulnerability")
 - email to sylius@groupe-cyllene.com
 
 Please include the plugin version, the Sylius and PHP versions, the payment path involved (Payum or
