@@ -39,13 +39,16 @@ even leaves**.
 # config/routes.yaml
 cyllene_digital_sylius_axepta_shop:
     resource: "@CylleneDigitalSyliusAxeptaPlugin/config/routes/shop.yaml"
-    prefix: /{_locale}
-    requirements:
-        _locale: ^[a-z]{2}(?:_[A-Z]{2})?$
 ```
 
-The language prefix is optional: the route takes the locale from the order to redirect, and works
-just as well imported without a prefix.
+⚠️ **Do not put this import behind the shop's `/{_locale}` prefix.** The route is built to sit
+outside it: it carries no locale, and the controller reads the one on the order to send the customer
+to a thank-you page in their own language.
+
+Under a prefix, `_locale` becomes a mandatory parameter of the route, while the return URL is
+generated without it. Generating that URL then only works from a context where the locale has been
+resolved from a request, and a payment captured by a Messenger worker has no request. The prefixed
+variant is also the one nothing exercises: the test suite and every real payment ran on this import.
 
 ## 4. Generate the payment encryption key
 
