@@ -21,8 +21,8 @@ final class PaddedReferenceProviderTest extends TestCase
         yield 'already the right length' => ['123456789012', '123456789012'];
         yield 'separators stripped' => ['REF-2026-000123', 'EF2026000123'];
         yield 'too long, the tail is kept' => ['ABCDEFGHIJKLMNOPQRST', 'IJKLMNOPQRST'];
-        yield 'vide' => ['', '000000000000'];
-        yield 'espaces seulement' => ['   ', '000000000000'];
+        yield 'empty' => ['', '000000000000'];
+        yield 'whitespace only' => ['   ', '000000000000'];
     }
 
     #[DataProvider('references')]
