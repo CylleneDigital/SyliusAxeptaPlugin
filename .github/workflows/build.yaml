@@ -140,3 +140,21 @@ jobs:
                     if-no-files-found: ignore
                     compression-level: 6
                     overwrite: true
+
+    # The matrix jobs carry generated names, which change with the matrix itself. This one has a
+    # fixed name and is the only check the branch rule has to require.
+    #
+    # `always()` matters: without it the job is skipped when a matrix job fails, and a skipped
+    # required check counts as satisfied - the rule would let through exactly what it guards
+    # against.
+    build:
+        runs-on: ubuntu-latest
+        name: "Build complete"
+        needs: tests
+        if: always()
+
+        steps:
+            -
+                name: Fail unless every matrix job succeeded
+                run: |
+                    [ "${{ needs.tests.result }}" = "success" ] || exit 1
