@@ -1,22 +1,22 @@
 name: Build
 
 on:
-    # `paths-ignore` only covers the `.md` files at the root: the pattern does not cross `/`, so a
-    # change under `docs/` does re-run the matrix.
+    # No `paths-ignore` on `pull_request`: `Build complete` is a required check, and a required
+    # check that never starts blocks the pull request for good rather than letting a documentation
+    # change through. A run on a `.md` file costs three minutes; a rule that has to be bypassed by
+    # hand costs the rule itself.
     #
-    # ⚠️ It has a blind spot: on a push replacing one history with another without a common ancestor
-    # - an orphan branch force-pushed, for instance - GitHub computes no list of changed files and
-    # the filter works against us: the workflow does not start at all, without reporting anything.
-    # `workflow_dispatch` is then the only way out, and it only appears in the interface if this
-    # file already exists on the default branch.
+    # `push` is limited to `main` so that a branch does not run the matrix twice, once for the push
+    # and once for its pull request.
+    #
+    # ⚠️ Blind spot of the path filters, kept in mind for the schedule: on a push replacing one
+    # history with another without a common ancestor - an orphan branch force-pushed, for instance -
+    # GitHub computes no list of changed files. `workflow_dispatch` is then the only way out, and it
+    # only appears in the interface if this file already exists on the default branch.
     push:
-        branches-ignore:
-            - 'dependabot/**'
-        paths-ignore:
-            - "*.md"
-    pull_request:
-        paths-ignore:
-            - "*.md"
+        branches:
+            - main
+    pull_request: ~
     release:
         types: [created]
     schedule:
