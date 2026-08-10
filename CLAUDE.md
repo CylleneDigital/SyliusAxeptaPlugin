@@ -37,6 +37,10 @@ Each fails without a usable message. None is written down anywhere else.
 
 Without it, **every admin page comes back as a 500** and says nothing more.
 
+`make init` already covers it: the `nodejs` service of `compose.override.dist.yml` runs
+`yarn install && yarn build` inside `vendor/sylius/test-application`. Rebuilding it alone, without
+the Makefile:
+
 ```bash
 docker run --rm -v "$PWD":/app -w /app/vendor/sylius/test-application \
   -u "$(id -u):$(id -g)" -e HOME=/tmp node:22-alpine sh -c "yarn install && yarn build"
