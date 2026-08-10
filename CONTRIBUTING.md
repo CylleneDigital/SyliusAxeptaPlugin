@@ -22,6 +22,27 @@ composer install
 composer run test-app-init
 ```
 
+## Proposing a change
+
+`main` is protected. Every change goes through a pull request, a one-line documentation fix
+included, and the maintainers work the same way.
+
+1. **Fork** the repository, then clone your fork.
+2. Branch off `main`: `git switch -c fix/short-description`.
+3. Commit in English, conventional form: `feat:`, `fix:`, `docs:`, `ci:`, `chore:`.
+4. Run the checks of the next section. They are the ones the CI runs.
+5. Push to your fork and open a pull request against `main`.
+
+Two checks have to be green before a pull request can be merged:
+
+| Check | What it covers |
+|---|---|
+| **`Build complete`** | the 18 matrix jobs, aggregated: PHP 8.2 to 8.5, Symfony 6.4 and 7.4, Sylius 2.1 and 2.2 |
+| **`Composer audit`** | known vulnerabilities in the dependencies |
+
+If this is your first contribution, the workflows will not start until a maintainer approves the
+run. That is GitHub's default on public repositories, not something you did wrong.
+
 ## What has to pass before a pull request
 
 ```bash
