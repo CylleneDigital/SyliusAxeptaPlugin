@@ -1,2 +1,6 @@
 # Maintainers are automatically assigned to pull requests.
-* @CylleneDigital
+#
+# This has to be a user or a team, never the organisation itself: `@CylleneDigital` now names the
+# organisation that owns this repository, and GitHub answers "Unknown owner" without failing
+# anything visible - review requests simply stop being made.
+* @JDCyllene
