@@ -17,6 +17,26 @@ your image. See [the note on OpenSSL](#why-blowfish-in-pure-php).
 composer require cyllene-digital/sylius-axepta-plugin
 ```
 
+### If the Flex recipe was applied, steps 2 and 3 are already done
+
+The package ships a Symfony Flex recipe. When Composer applies it, it registers the bundle in
+`config/bundles.php` and writes `config/routes/cyllene_digital_sylius_axepta.yaml`, which imports the
+plugin's shop routes.
+
+The recipe lives in the **contrib** repository: Composer only applies it if the project allows those,
+either by answering yes to its prompt or through `extra.symfony.allow-contrib`. It is also skipped
+altogether by `--no-scripts`.
+
+So check rather than assume - these are the two files whose absence breaks payments:
+
+```bash
+grep Axepta config/bundles.php
+cat config/routes/cyllene_digital_sylius_axepta.yaml
+```
+
+Both there: **skip to step 4**. Either one missing: carry out the matching step below by hand. Steps
+4 to 7 are yours in every case, the recipe only prints a reminder of them.
+
 ## 2. Register the bundle
 
 ```php
@@ -34,6 +54,9 @@ The plugin has **neither entity nor migration**: nothing to do on the database s
 ⚠️ **This step is not optional.** The plugin exposes the page the customer returns to from the
 bank's payment page. Without it the return URL cannot be built and **the payment fails before it
 even leaves**.
+
+The recipe writes the same import under its own file name,
+`config/routes/cyllene_digital_sylius_axepta.yaml`. One import is enough - do not declare it twice.
 
 ```yaml
 # config/routes.yaml
