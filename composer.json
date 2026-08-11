@@ -1,7 +1,7 @@
 {
     "name": "cyllene-digital/sylius-axepta-plugin",
     "type": "sylius-plugin",
-    "description": "Axepta BNP Paribas payment gateway for Sylius.",
+    "description": "Axepta BNP Paribas payment gateway for Sylius 2.1+.",
     "keywords": [
         "sylius",
         "sylius-plugin",

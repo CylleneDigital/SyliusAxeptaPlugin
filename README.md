@@ -7,7 +7,7 @@
 [![Build](https://img.shields.io/github/actions/workflow/status/CylleneDigital/SyliusAxeptaPlugin/build.yaml?branch=main&label=build&logo=github)](https://github.com/CylleneDigital/SyliusAxeptaPlugin/actions/workflows/build.yaml)
 [![Security](https://img.shields.io/github/actions/workflow/status/CylleneDigital/SyliusAxeptaPlugin/security.yaml?branch=main&label=security&logo=github)](https://github.com/CylleneDigital/SyliusAxeptaPlugin/actions/workflows/security.yaml)
 
-Integration of the **Axepta BNP Paribas** payment gateway for **Sylius 2**.
+Integration of the **Axepta BNP Paribas** payment gateway for **Sylius 2.1+**.
 
 > Axepta® is a registered trademark of BNP Paribas. This plugin is an independent integration,
 > neither affiliated with, sponsored by, nor endorsed by BNP Paribas. No BNP Paribas or Axepta logo
