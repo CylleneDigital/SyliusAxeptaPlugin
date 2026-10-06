@@ -7,6 +7,10 @@ updates:
     day: monday
     time: "10:00"
   open-pull-requests-limit: 10
+  groups:
+    composer:
+      patterns: ["*"]
+      update-types: [minor, patch]
 - package-ecosystem: github-actions
   directory: "/"
   schedule:
