@@ -28,9 +28,15 @@ concurrency:
     group: ${{ github.workflow }}-${{ github.ref }}
     cancel-in-progress: true
 
+permissions:
+    contents: read
+
 jobs:
     tests:
-        runs-on: ubuntu-latest
+        # Pinned rather than `ubuntu-latest`: the build action is only known to work on this image.
+        runs-on: ubuntu-24.04
+        # A stuck browser would otherwise hold the runner for the 6-hour default.
+        timeout-minutes: 30
 
         name: "Sylius ${{ matrix.sylius }}, PHP ${{ matrix.php }}, Symfony ${{ matrix.symfony }}, ${{ matrix.database }}"
 
@@ -42,27 +48,44 @@ jobs:
                 # dependency rather than on our code, move the line to `continue-on-error` with a
                 # comment - do not drop it from the matrix.
                 php: ["8.2", "8.3", "8.4", "8.5"]
-                symfony: ["^6.4", "^7.4"]
+                symfony: ["^6.4", "^7.4", "^8.0"]
                 # The floor is 2.1 rather than 2.0 for two reasons lying with Sylius itself. Its
                 # Behat cart context did not restore the security token before 2.1, so a scenario
                 # logging the customer in before filling their cart cannot pass on 2.0. And 2.0
                 # pins Behat versions predating PHP 8.5, which Composer therefore cannot install
                 # together.
-                sylius: ["~2.1.0", "~2.2.0"]
+                sylius: ["~2.1.0", "~2.2.0", "~2.3.0"]
                 # The plugin creates no table and writes no query: a single database is enough on
                 # the main matrix. The cycles saved cover 4 PHP versions.
                 database: ["mysql:8.4"]
                 node: ["22.x"]
+                # Sylius 2.3 needs PHP 8.3 and is the only one to support Symfony 8, which needs
+                # PHP 8.4. Symfony 6.4 is covered by Sylius 2.1 and 2.2: running it on 2.3 as well
+                # would cost three jobs for a combination no new project picks.
+                exclude:
+                    - sylius: "~2.1.0"
+                      symfony: "^8.0"
+                    - sylius: "~2.2.0"
+                      symfony: "^8.0"
+                    - sylius: "~2.3.0"
+                      symfony: "^6.4"
+                    - sylius: "~2.3.0"
+                      php: "8.2"
+                    - symfony: "^8.0"
+                      php: "8.3"
 
                 include:
+                    # The build action declares MariaDB with a bare version, which DBAL reads as
+                    # MySQL: that is what the Sylius 2.3 migrations need, they skip a database
+                    # declared as MariaDB.
                     - php: "8.4"
                       symfony: "^7.4"
-                      sylius: "~2.2.0"
+                      sylius: "~2.3.0"
                       database: "mariadb:11.4"
                       node: "22.x"
                     - php: "8.4"
                       symfony: "^7.4"
-                      sylius: "~2.2.0"
+                      sylius: "~2.3.0"
                       database: "postgres:17"
                       node: "22.x"
 
@@ -73,9 +96,22 @@ jobs:
             -
                 uses: actions/checkout@v7
 
+            # Sylius 2.1 / 2.2 declare their Behat steps in annotations, which Behat 4 no longer reads;
+            # Composer would still pick Behat 4 for them.
+            -
+                name: Keep Behat 3 before Sylius 2.3
+                if: matrix.sylius != '~2.3.0'
+                run: composer require --dev --no-update --no-interaction "behat/behat:^3.22" "friends-of-behat/mink-extension:^2.7"
+
+            # Sylius 2.1 mappings fail ORM 3.7 validation (ShipmentUnit#shipment vs Shipment#units).
+            -
+                name: Keep Doctrine ORM below 3.7 before Sylius 2.3
+                if: matrix.sylius != '~2.3.0'
+                run: composer require --no-update --no-interaction "doctrine/orm:^2.20 || >=3.6 <3.7"
+
             -
                 name: Build Sylius Test Application
-                uses: SyliusLabs/BuildTestAppAction@v4
+                uses: SyliusLabs/BuildTestAppAction@fbdfc158a99f540fc3bbe554b46120d14444f2f4 # v4.3.0
                 with:
                     # The Behat scenarios open no browser - `symfony` session, no `@javascript`
                     # tag - but the admin pages render the Webpack Encore entries: without a
@@ -86,6 +122,9 @@ jobs:
                     database: "${{ matrix.database }}"
                     node_version: "${{ matrix.node }}"
                     php_version: "${{ matrix.php }}"
+                    # The PHP-FPM worker behind `symfony server:start` segfaulted at random under OPcache
+                    # (Behat 502, "child exited on signal 11"): Behat does not need it.
+                    opcache_enable: "no"
                     sylius_version: "${{ matrix.sylius }}"
                     symfony_version: "${{ matrix.symfony }}"
 
@@ -103,7 +142,7 @@ jobs:
             # most frequent class of bug.
             -
                 name: Validate container
-                run: vendor/bin/console lint:container
+                run: vendor/bin/console lint:container --env=test
 
             # Sylius encrypts the gateway configuration: without this key, every test writing to
             # the database fails on "Cannot read keyfile", an error that does not say its name.
@@ -111,12 +150,16 @@ jobs:
                 name: Generate the payment encryption key
                 run: vendor/bin/console sylius:payment:generate-key
 
+            # Static analysis and the coding standard do not depend on the database nor on the PHP
+            # version line under test, so they only run once, on the primary job.
             -
                 name: Run PHPStan
+                if: matrix.php == '8.4' && matrix.symfony == '^7.4' && matrix.sylius == '~2.3.0' && matrix.database == 'mysql:8.4'
                 run: vendor/bin/phpstan analyse --ansi --no-progress
 
             -
                 name: Run ECS
+                if: matrix.php == '8.4' && matrix.symfony == '^7.4' && matrix.sylius == '~2.3.0' && matrix.database == 'mysql:8.4'
                 run: vendor/bin/ecs check --ansi --no-progress-bar
 
             -
@@ -148,7 +191,7 @@ jobs:
     # required check counts as satisfied - the rule would let through exactly what it guards
     # against.
     build:
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
         name: "Build complete"
         needs: tests
         if: always()
