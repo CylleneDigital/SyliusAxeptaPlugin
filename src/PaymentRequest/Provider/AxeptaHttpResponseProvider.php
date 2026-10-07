@@ -7,7 +7,6 @@ namespace CylleneDigital\SyliusAxeptaPlugin\PaymentRequest\Provider;
 use CylleneDigital\SyliusAxeptaPlugin\Axepta\Protocol\PaymentPageRequest;
 use CylleneDigital\SyliusAxeptaPlugin\Renderer\AutoSubmitFormRenderer;
 use Sylius\Bundle\PaymentBundle\Provider\HttpResponseProviderInterface;
-use Sylius\Bundle\ResourceBundle\Controller\RequestConfiguration;
 use Sylius\Component\Payment\Model\PaymentRequestInterface;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -16,6 +15,9 @@ use Symfony\Component\HttpFoundation\Response;
  *
  * It is the same template as on the Payum path: the customer sees the same page whichever
  * mechanism the shop settled on.
+ *
+ * The first argument is an `object` on purpose: Sylius 2.1 and 2.2 pass a `RequestConfiguration`,
+ * Sylius 2.3 a `Request`. Neither is read here, and the wider type satisfies both interfaces.
  *
  * @experimental
  *
@@ -27,13 +29,13 @@ final readonly class AxeptaHttpResponseProvider implements HttpResponseProviderI
     {
     }
 
-    public function supports(RequestConfiguration $requestConfiguration, PaymentRequestInterface $paymentRequest): bool
+    public function supports(object $request, PaymentRequestInterface $paymentRequest): bool
     {
         return PaymentRequestInterface::ACTION_CAPTURE === $paymentRequest->getAction() &&
             [] !== $paymentRequest->getResponseData();
     }
 
-    public function getResponse(RequestConfiguration $requestConfiguration, PaymentRequestInterface $paymentRequest): Response
+    public function getResponse(object $request, PaymentRequestInterface $paymentRequest): Response
     {
         $responseData = $paymentRequest->getResponseData();
 
