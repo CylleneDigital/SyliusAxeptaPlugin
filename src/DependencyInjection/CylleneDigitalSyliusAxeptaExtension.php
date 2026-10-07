@@ -8,7 +8,7 @@ use Sylius\Bundle\ResourceBundle\DependencyInjection\Extension\AbstractResourceE
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\PrependExtensionInterface;
-use Symfony\Component\DependencyInjection\Loader\XmlFileLoader;
+use Symfony\Component\DependencyInjection\Loader\PhpFileLoader;
 use Symfony\Component\Yaml\Yaml;
 
 /**
@@ -29,9 +29,9 @@ final class CylleneDigitalSyliusAxeptaExtension extends AbstractResourceExtensio
         $container->setParameter('cyllene_digital_sylius_axepta.payment_page_url', $config['payment_page_url']);
         $container->setParameter('cyllene_digital_sylius_axepta.logger_channel', $config['logger_channel']);
 
-        $loader = new XmlFileLoader($container, new FileLocator(__DIR__ . '/../../config'));
+        $loader = new PhpFileLoader($container, new FileLocator(__DIR__ . '/../../config'));
 
-        $loader->load('services.xml');
+        $loader->load('services.php');
     }
 
     /**
