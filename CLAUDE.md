@@ -48,7 +48,7 @@ docker run --rm -v "$PWD":/app -w /app/vendor/sylius/test-application \
 
 ### A file added under `config/services/` is not seen by `cache:clear`
 
-`config/services.xml` imports `services/**`, and the `GlobResource` keeps the list frozen. You need
+`config/services.php` imports `services/*.php`, and the `GlobResource` keeps the list frozen. You need
 `rm -rf var/cache/*`. Symptom: the services of the new file do not exist, without the slightest
 error.
 
@@ -64,7 +64,9 @@ first payment in the database appears to work.
 Sylius encrypts the gateway configuration (`sylius_payment.encryption.enabled` defaults to true).
 **Without an encryption key, every write fails on `Cannot read keyfile`.** The key lives in
 `vendor/sylius/test-application/config/encryption/` and therefore disappears on every
-`composer install`.
+`composer install` or `update` that replaces the test application. The gateway configurations
+already in a database were encrypted with the lost key: the payment methods grid then answers 500
+on a decryption error. Recreate those payment methods, or reload the fixtures.
 
 ```bash
 APP_ENV=test vendor/bin/console doctrine:schema:update --force --complete -n
@@ -86,6 +88,12 @@ APP_ENV=test vendor/bin/console sylius:payment:generate-key
   the matching Sylius foundation.
 - **`PasswordType` fields require `always_empty: false`** - otherwise saving an existing
   `PaymentMethod` again overwrites the keys with empty strings.
+- **Configuration stays in PHP.** Symfony 8 no longer loads XML service definitions, and Behat 4
+  (the one Symfony 8 requires) neither YAML configuration nor step annotations: services in
+  `config/services/*.php`, Behat in `behat.dist.php`, steps as `#[Given]` attributes.
+- **Sylius 2.1 to 2.3 with one code base.** Where Sylius changed a signature, widen the parameter
+  rather than branch on the version - `AxeptaHttpResponseProvider` takes `object $request` because
+  2.1 / 2.2 pass a `RequestConfiguration` and 2.3 a `Request`.
 - **New configuration keys must tolerate their own absence**: a gateway configuration written by an
   earlier version does not carry them.
 - The public contract - protocol classes, substitutable interfaces, hookable names, service tags,
