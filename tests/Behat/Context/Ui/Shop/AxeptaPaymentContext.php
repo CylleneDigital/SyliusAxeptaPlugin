@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Tests\CylleneDigital\SyliusAxeptaPlugin\Behat\Context\Ui\Shop;
 
 use Behat\Behat\Context\Context;
+use Behat\Step\Given;
+use Behat\Step\Then;
+use Behat\Step\When;
 use CylleneDigital\SyliusAxeptaPlugin\Axepta\Protocol\AxeptaCredentials;
 use Doctrine\ORM\EntityManagerInterface;
 use Sylius\Behat\Service\SharedStorageInterface;
@@ -47,9 +50,8 @@ final readonly class AxeptaPaymentContext implements Context
      *
      * The step is explicit rather than inferred from the checkout: what we want to exercise here is
      * the notification, not walking the checkout, which Sylius already covers.
-     *
-     * @Given the shop has sent the payment request to the bank
      */
+    #[Given('the shop has sent the payment request to the bank')]
     public function theShopHasSentThePaymentRequestToTheBank(): void
     {
         $order = $this->order();
@@ -67,9 +69,7 @@ final readonly class AxeptaPaymentContext implements Context
         $this->paymentRequestAnnouncer->dispatchPaymentRequestCommand($paymentRequest);
     }
 
-    /**
-     * @Then the payment request should target the Axepta payment page
-     */
+    #[Then('the payment request should target the Axepta payment page')]
     public function thePaymentRequestShouldTargetTheAxeptaPaymentPage(): void
     {
         Assert::same($this->captureResponseData()['url'] ?? null, AxeptaCredentials::DEFAULT_PAYMENT_PAGE_URL);
@@ -78,9 +78,8 @@ final readonly class AxeptaPaymentContext implements Context
     /**
      * The fields go out as such in the self-submitting form; their rendering is covered by the
      * integration tests.
-     *
-     * @Then it should carry a signed payload
      */
+    #[Then('it should carry a signed payload')]
     public function itShouldCarryASignedPayload(): void
     {
         $fields = $this->captureResponseData()['fields'] ?? [];
@@ -100,9 +99,7 @@ final readonly class AxeptaPaymentContext implements Context
         return $this->capture()->getResponseData();
     }
 
-    /**
-     * @When /^the bank notifies the shop that the payment (succeeded|was refused)$/
-     */
+    #[When('/^the bank notifies the shop that the payment (succeeded|was refused)$/')]
     public function theBankNotifiesTheShop(string $outcome): void
     {
         $notification = $this->mocker->notification(
@@ -116,9 +113,7 @@ final readonly class AxeptaPaymentContext implements Context
         $this->sendNotification($notification);
     }
 
-    /**
-     * @When the bank sends the same notification again
-     */
+    #[When('the bank sends the same notification again')]
     public function theBankSendsTheSameNotificationAgain(): void
     {
         /** @var array<string, string> $notification */
@@ -127,17 +122,13 @@ final readonly class AxeptaPaymentContext implements Context
         $this->sendNotification($notification);
     }
 
-    /**
-     * @When someone sends a notification with an invalid signature
-     */
+    #[When('someone sends a notification with an invalid signature')]
     public function someoneSendsAForgedNotification(): void
     {
         $this->sendNotification($this->mocker->forgedNotification($this->paymentMethod(), $this->transactionId()));
     }
 
-    /**
-     * @Then the shop should have answered the bank without an error
-     */
+    #[Then('the shop should have answered the bank without an error')]
     public function theShopShouldHaveAnsweredWithoutError(): void
     {
         $status = $this->sharedStorage->get('axepta_notification_status');
@@ -148,25 +139,19 @@ final readonly class AxeptaPaymentContext implements Context
         ));
     }
 
-    /**
-     * @Then my order should be paid
-     */
+    #[Then('my order should be paid')]
     public function myOrderShouldBePaid(): void
     {
         Assert::same($this->reloadPaymentState(), OrderPaymentStates::STATE_PAID);
     }
 
-    /**
-     * @Then my order should not be paid
-     */
+    #[Then('my order should not be paid')]
     public function myOrderShouldNotBePaid(): void
     {
         Assert::notSame($this->reloadPaymentState(), OrderPaymentStates::STATE_PAID);
     }
 
-    /**
-     * @Then I should be able to pay for my order again
-     */
+    #[Then('I should be able to pay for my order again')]
     public function iShouldBeAbleToPayForMyOrderAgain(): void
     {
         Assert::notSame(

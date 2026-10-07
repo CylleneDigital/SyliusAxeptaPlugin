@@ -7,7 +7,7 @@
 /etc/build/*
 !/etc/build/.gitignore
 
-/behat.yml
+/behat.php
 /phpunit.xml
 /compose.override.yml
 

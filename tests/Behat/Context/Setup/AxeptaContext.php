@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\CylleneDigital\SyliusAxeptaPlugin\Behat\Context\Setup;
 
 use Behat\Behat\Context\Context;
+use Behat\Step\Given;
 use CylleneDigital\SyliusAxeptaPlugin\Payum\AxeptaGatewayFactory;
 use Sylius\Behat\Service\SharedStorageInterface;
 use Sylius\Bundle\PayumBundle\Model\GatewayConfigInterface;
@@ -39,18 +40,14 @@ final readonly class AxeptaContext implements Context
     ) {
     }
 
-    /**
-     * @Given the store has a payment method :name with a code :code and Axepta gateway
-     * @Given /^the store has a payment method "([^"]+)" with a code "([^"]+)" and Axepta gateway in (test mode)$/
-     */
+    #[Given('the store has a payment method :name with a code :code and Axepta gateway')]
+    #[Given('/^the store has a payment method "([^"]+)" with a code "([^"]+)" and Axepta gateway in (test mode)$/')]
     public function theStoreHasAnAxeptaPaymentMethod(string $name, string $code, ?string $testMode = null): void
     {
         $this->createPaymentMethod($name, $code, null !== $testMode, usePayum: true);
     }
 
-    /**
-     * @Given the store has a payment method :name with a code :code and Axepta gateway on the PaymentRequest path
-     */
+    #[Given('the store has a payment method :name with a code :code and Axepta gateway on the PaymentRequest path')]
     public function theStoreHasAnAxeptaPaymentMethodOnThePaymentRequestPath(string $name, string $code): void
     {
         $this->createPaymentMethod($name, $code, false, usePayum: false);
