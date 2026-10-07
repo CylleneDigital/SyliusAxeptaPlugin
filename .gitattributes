@@ -6,7 +6,7 @@
 /AGENTS.md                  export-ignore
 /CLAUDE.md                  export-ignore
 /Makefile                   export-ignore
-/behat.yml.dist             export-ignore
+/behat.dist.php             export-ignore
 /compose.override.dist.yml  export-ignore
 /compose.yml                export-ignore
 /ecs.php                    export-ignore

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tests\CylleneDigital\SyliusAxeptaPlugin\Behat\Context\Ui\Admin;
 
 use Behat\Behat\Context\Context;
+use Behat\Step\Then;
+use Behat\Step\When;
 use Sylius\Behat\Service\Resolver\CurrentPageResolverInterface;
 use Sylius\Behat\Service\SharedStorageInterface;
 use Sylius\Component\Core\Model\PaymentMethodInterface;
@@ -26,9 +28,7 @@ final readonly class ManagingAxeptaPaymentMethodContext implements Context
     ) {
     }
 
-    /**
-     * @When I configure it with merchant id :merchantId, hmac key :hmacKey and blowfish key :blowfishKey
-     */
+    #[When('I configure it with merchant id :merchantId, hmac key :hmacKey and blowfish key :blowfishKey')]
     public function iConfigureItWithCredentials(string $merchantId, string $hmacKey, string $blowfishKey): void
     {
         $page = $this->currentPage();
@@ -39,17 +39,13 @@ final readonly class ManagingAxeptaPaymentMethodContext implements Context
         $page->specifyBlowfishKey($blowfishKey);
     }
 
-    /**
-     * @When I enable its test mode
-     */
+    #[When('I enable its test mode')]
     public function iEnableItsTestMode(): void
     {
         $this->updatePage->enableTestMode();
     }
 
-    /**
-     * @Then this payment method should be in test mode
-     */
+    #[Then('this payment method should be in test mode')]
     public function thisPaymentMethodShouldBeInTestMode(): void
     {
         Assert::true(
@@ -64,9 +60,8 @@ final readonly class ManagingAxeptaPaymentMethodContext implements Context
      * `PasswordType` never redisplays its value: both key fields are blank on screen, and that is
      * expected. What matters is that saving without retyping them **does not erase them**, which is
      * what this step checks, by reading the stored configuration back.
-     *
-     * @Then this payment method should still have its Axepta keys
      */
+    #[Then('this payment method should still have its Axepta keys')]
     public function thisPaymentMethodShouldStillHaveItsKeys(): void
     {
         Assert::true(
@@ -89,25 +84,19 @@ final readonly class ManagingAxeptaPaymentMethodContext implements Context
         }
     }
 
-    /**
-     * @Then I should be notified that the merchant id is required
-     */
+    #[Then('I should be notified that the merchant id is required')]
     public function iShouldBeNotifiedThatTheMerchantIdIsRequired(): void
     {
         $this->assertValidationMessage('merchant ID');
     }
 
-    /**
-     * @Then I should be notified that the hmac key is required
-     */
+    #[Then('I should be notified that the hmac key is required')]
     public function iShouldBeNotifiedThatTheHmacKeyIsRequired(): void
     {
         $this->assertValidationMessage('HMAC key');
     }
 
-    /**
-     * @Then I should be notified that the blowfish key is required
-     */
+    #[Then('I should be notified that the blowfish key is required')]
     public function iShouldBeNotifiedThatTheBlowfishKeyIsRequired(): void
     {
         $this->assertValidationMessage('Blowfish key');
