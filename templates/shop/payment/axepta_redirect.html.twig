@@ -1,7 +1,7 @@
 {#
     Transition page between the shop and the hosted payment page.
 
-    Surchargeable : `templates/bundles/CylleneDigitalSyliusAxeptaPlugin/shop/payment/axepta_redirect.html.twig`.
+    Overridable: `templates/bundles/CylleneDigitalSyliusAxeptaPlugin/shop/payment/axepta_redirect.html.twig`.
 
     Must stay usable without JavaScript - the `noscript` button is not decorative, it is the only
     way to pay for a hardened browser or a screen reader.
@@ -11,6 +11,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="robots" content="noindex, nofollow">
+    {# Unstyled page: without it, a dark-mode browser flashes it white before the bank's page. #}
+    <meta name="color-scheme" content="light dark">
     <title>{{ 'cyllene_digital_sylius_axepta.ui.redirecting'|trans }}</title>
 </head>
 <body onload="document.forms[0].submit();">
