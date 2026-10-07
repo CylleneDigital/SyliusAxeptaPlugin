@@ -11,6 +11,18 @@
         "payment-gateway"
     ],
     "license": "MIT",
+    "homepage": "https://github.com/CylleneDigital/SyliusAxeptaPlugin",
+    "authors": [
+        {
+            "name": "Cyllene",
+            "homepage": "https://github.com/CylleneDigital"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/CylleneDigital/SyliusAxeptaPlugin/issues",
+        "source": "https://github.com/CylleneDigital/SyliusAxeptaPlugin",
+        "security": "https://github.com/CylleneDigital/SyliusAxeptaPlugin/security/policy"
+    },
     "require": {
         "php": "^8.2",
         "ext-hash": "*",
