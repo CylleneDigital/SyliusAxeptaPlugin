@@ -17,9 +17,9 @@ Integration of the **Axepta BNP Paribas** payment gateway for **Sylius 2.1+**.
 
 | Component | Versions |
 |---|---|
-| PHP | `^8.2` |
-| Sylius | `^2.1` |
-| Symfony | `^6.4` or `^7.4` |
+| PHP | `^8.2` (Sylius 2.3: `^8.3`, Symfony 8: `^8.4`) |
+| Sylius | `2.1`, `2.2`, `2.3` |
+| Symfony | `^6.4`, `^7.4`, or `^8.0` with Sylius 2.3 |
 
 ## What this plugin does
 
@@ -124,8 +124,9 @@ notification, accented description in ISO-8859-1, and twelve-character merchant 
 nominal cycles were replayed on the code as it stands; the remaining cases come from an earlier
 campaign, on a slightly older revision.
 
-**The continuous integration matrix is green** across the eighteen advertised combinations: PHP 8.2
-to 8.5, Symfony 6.4 and 7.4, Sylius 2.1 and 2.2, and MySQL 8.4, MariaDB 11.4 and PostgreSQL 17. The
+**The continuous integration matrix is green** across the twenty-three advertised combinations:
+PHP 8.2 to 8.5, Symfony 6.4, 7.4 and 8, Sylius 2.1, 2.2 and 2.3 - within what each Sylius version
+supports - and MySQL 8.4, MariaDB 11.4 and PostgreSQL 17. The
 run against the real platform was carried out on **PHP 8.4 / Sylius 2.2 / Symfony 7.4** - the only
 combination on which a payment was actually taken.
 

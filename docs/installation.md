@@ -4,8 +4,9 @@
 
 | | |
 |---|---|
-| PHP | `^8.2`, with `hash` and `mbstring` |
-| Sylius | `^2.1` |
+| PHP | `^8.2` (Sylius 2.3: `^8.3`), with `hash` and `mbstring` |
+| Sylius | `2.1`, `2.2` or `2.3` |
+| Symfony | `^6.4`, `^7.4`, or `^8.0` with Sylius 2.3 |
 | An Axepta contract | Merchant identifier and keys, supplied by BNP Paribas |
 
 No exotic extension: the Blowfish encryption is pure PHP, precisely so that nothing is required of

@@ -37,7 +37,7 @@ Two checks have to be green before a pull request can be merged:
 
 | Check | What it covers |
 |---|---|
-| **`Build complete`** | the 18 matrix jobs, aggregated: PHP 8.2 to 8.5, Symfony 6.4 and 7.4, Sylius 2.1 and 2.2 |
+| **`Build complete`** | the 23 matrix jobs, aggregated: PHP 8.2 to 8.5, Symfony 6.4, 7.4 and 8, Sylius 2.1, 2.2 and 2.3, within what each Sylius supports |
 | **`Composer audit`** | known vulnerabilities in the dependencies |
 
 If this is your first contribution, the workflows will not start until a maintainer approves the
