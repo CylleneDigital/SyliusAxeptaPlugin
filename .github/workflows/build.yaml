@@ -75,13 +75,15 @@ jobs:
                       php: "8.3"
 
                 include:
-                    # The build action declares MariaDB with a bare version, which DBAL reads as
-                    # MySQL: that is what the Sylius 2.3 migrations need, they skip a database
-                    # declared as MariaDB.
+                    # The Sylius migrations skip themselves on MariaDB under DBAL 4, where
+                    # `MariaDBPlatform` no longer extends `MySQLPlatform`, and leave the database
+                    # empty. The plugin has neither entity nor migration: building the schema from
+                    # the mappings loses nothing here.
                     - php: "8.4"
                       symfony: "^7.4"
                       sylius: "~2.3.0"
                       database: "mariadb:11.4"
+                      database_setup: "schema"
                       node: "22.x"
                     - php: "8.4"
                       symfony: "^7.4"
@@ -111,7 +113,7 @@ jobs:
 
             -
                 name: Build Sylius Test Application
-                uses: SyliusLabs/BuildTestAppAction@fbdfc158a99f540fc3bbe554b46120d14444f2f4 # v4.3.0
+                uses: SyliusLabs/BuildTestAppAction@c3b108b5f3c299c55f429a8cf0ed88734d4f4979 # v4.3.1
                 with:
                     # The Behat scenarios open no browser - `symfony` session, no `@javascript`
                     # tag - but the admin pages render the Webpack Encore entries: without a
@@ -120,6 +122,7 @@ jobs:
                     cache_key: "${{ runner.os }}-php-${{ matrix.php }}-composer-${{ hashFiles('**/composer.json') }}"
                     cache_restore_key: "${{ runner.os }}-php-${{ matrix.php }}-composer-"
                     database: "${{ matrix.database }}"
+                    database_setup: "${{ matrix.database_setup || 'migrations' }}"
                     node_version: "${{ matrix.node }}"
                     php_version: "${{ matrix.php }}"
                     # The PHP-FPM worker behind `symfony server:start` segfaulted at random under OPcache
