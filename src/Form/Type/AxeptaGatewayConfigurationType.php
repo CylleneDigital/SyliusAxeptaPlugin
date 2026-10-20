@@ -38,14 +38,12 @@ final class AxeptaGatewayConfigurationType extends AbstractType
                     new NotBlank(message: 'cyllene_digital_sylius_axepta.merchant_id.not_blank', groups: ['sylius']),
                 ],
             ])
-            // `always_empty => false` only keeps the value after a submission - when the form
-            // opens, `PasswordType` blanks the field no matter what. So this setting merely avoids
-            // making the key be retyped when validation fails; the listener at the bottom of this
-            // class is what actually prevents overwriting.
+            // `always_empty` keeps its default, `true`: the listener at the bottom of this class puts
+            // the stored keys back into the submitted data, so with `false` a submission failing
+            // validation on any other field would render them in clear in the `value` attribute.
             ->add('hmac_key', PasswordType::class, [
                 'label' => 'cyllene_digital_sylius_axepta.ui.hmac_key',
                 'help' => 'cyllene_digital_sylius_axepta.ui.hmac_key_help',
-                'always_empty' => false,
                 'constraints' => [
                     new NotBlank(message: 'cyllene_digital_sylius_axepta.hmac_key.not_blank', groups: ['sylius']),
                 ],
@@ -53,7 +51,6 @@ final class AxeptaGatewayConfigurationType extends AbstractType
             ->add('blowfish_key', PasswordType::class, [
                 'label' => 'cyllene_digital_sylius_axepta.ui.blowfish_key',
                 'help' => 'cyllene_digital_sylius_axepta.ui.blowfish_key_help',
-                'always_empty' => false,
                 'constraints' => [
                     new NotBlank(message: 'cyllene_digital_sylius_axepta.blowfish_key.not_blank', groups: ['sylius']),
                 ],
@@ -84,10 +81,9 @@ final class AxeptaGatewayConfigurationType extends AbstractType
     /**
      * Keeps the existing keys when they come back empty.
      *
-     * `PasswordType` never redisplays its value when the form opens - that is Symfony's behaviour,
-     * and `always_empty => false` changes nothing since it only applies to submitted forms. When
-     * editing an existing payment method, both key fields therefore arrive blank on screen, and
-     * without this listener a plain "Save" would replace them with empty strings.
+     * `PasswordType` never redisplays its value. When editing an existing payment method, both key
+     * fields therefore arrive blank on screen, and without this listener a plain "Save" would
+     * replace them with empty strings.
      *
      * The effect would stay invisible until the next payment: the signature goes out computed with
      * an empty key, the bank rejects it, and nothing in the back office says why.

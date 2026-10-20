@@ -230,6 +230,25 @@ final class NotificationVerifierTest extends TestCase
     }
 
     /**
+     * `Len` is read before the signature is checked: whoever posts to the notification URL chooses
+     * it. It may only restore what the deciphering stripped, never grow the payload beyond the
+     * deciphered bytes - otherwise a request of a few dozen bytes allocates as much memory as it
+     * announces.
+     */
+    public function testAnAnnouncedLengthBeyondTheDecipheredBytesIsIgnored(): void
+    {
+        $parameters = $this->notify('OK');
+        $parameters['Len'] = '50000000';
+
+        memory_reset_peak_usage();
+        $baseline = memory_get_peak_usage();
+        $notification = $this->verify($parameters);
+
+        self::assertLessThan(1024 * 1024, memory_get_peak_usage() - $baseline, 'The payload was padded up to the announced length.');
+        self::assertTrue($notification->macValid);
+    }
+
+    /**
      * @param array<string, mixed> $parameters
      */
     private function verify(array $parameters): \CylleneDigital\SyliusAxeptaPlugin\Axepta\Protocol\Notification

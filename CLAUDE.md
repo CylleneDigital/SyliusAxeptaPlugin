@@ -86,8 +86,10 @@ APP_ENV=test vendor/bin/console sylius:payment:generate-key
 - **Both payment paths are in scope** from v1. Sylius 2 routes according to
   `GatewayConfig::usePayum`. The classes of the `PaymentRequest` adapter carry `@experimental`, like
   the matching Sylius foundation.
-- **`PasswordType` fields require `always_empty: false`** - otherwise saving an existing
-  `PaymentMethod` again overwrites the keys with empty strings.
+- **The key fields keep `always_empty` at its default, `true`.** The `PRE_SUBMIT` listener of
+  `AxeptaGatewayConfigurationType` puts the stored keys back when they come back empty - that is what
+  stops a plain save from wiping them. With `false`, a submission failing validation would render
+  those stored keys in the page.
 - **Configuration stays in PHP.** Symfony 8 no longer loads XML service definitions, and Behat 4
   (the one Symfony 8 requires) neither YAML configuration nor step annotations: services in
   `config/services/*.php`, Behat in `behat.dist.php`, steps as `#[Given]` attributes.
