@@ -115,29 +115,42 @@ final class NotifyAction implements ActionInterface, ApiAwareInterface
         }
 
         // Accepted limitation of v1: cards notify over POST. Alternative payment means notify
-        // over GET and are not in scope yet - one that does reach this URL may have been paid.
-        if ($httpRequest->isMethod('GET') && $httpRequest->query->has('Data')) {
-            $this->logger->error('Axepta notification over GET, as alternative payment means send it, is not supported: rejected. The payment page offered more than cards, check `payment_page_url`.', [
+        // over GET and are not in scope yet - one that does reach this URL may have been paid,
+        // which only its signature can tell.
+        $isGetNotification = $httpRequest->isMethod('GET') && $httpRequest->query->has('Data');
+
+        // The plugin asks for encrypted responses: a message without `Data` is not from the bank,
+        // and its clear fields are not worth verifying.
+        if (!$isGetNotification && (!$httpRequest->isMethod('POST') || !$httpRequest->request->has('Data'))) {
+            $this->logger->warning('Axepta notification without an encrypted payload: rejected.', [
                 'payment_id' => $payment->getId(),
+                'http_method' => $httpRequest->getMethod(),
                 'client_ip' => $httpRequest->getClientIp(),
             ]);
 
             return;
         }
 
-        if (!$httpRequest->isMethod('POST')) {
-            return;
-        }
-
         // Symfony 7 annotates `all()` as `array<string, mixed>`; 6.4 returns a bare `array`,
         // which static analysis refuses to pass to the verifier.
         /** @var array<string, mixed> $requestParameters */
-        $requestParameters = $httpRequest->request->all();
+        $requestParameters = $isGetNotification ? $httpRequest->query->all() : $httpRequest->request->all();
 
         $notification = $this->notificationVerifier->verify($this->credentials, $requestParameters);
 
         if (!$notification->macValid) {
             $this->logRejectedNotification($payment, $notification, $httpRequest->getClientIp());
+
+            return;
+        }
+
+        if ($isGetNotification) {
+            $this->logger->error('Axepta notification over GET, as alternative payment means send it, is not supported: rejected. The payment page offered more than cards, check `payment_page_url`.', [
+                'payment_id' => $payment->getId(),
+                'transaction_id' => $notification->transactionId(),
+                'status' => $notification->status?->value,
+                'pay_id' => $notification->payId(),
+            ]);
 
             return;
         }
@@ -162,18 +175,6 @@ final class NotifyAction implements ActionInterface, ApiAwareInterface
         $designated = null === $received ? null : $this->transactionIdGenerator->resolvePaymentIdentifier($received);
         $id = $payment->getId();
 
-        if (!$isLatestAttempt && (null === $designated || !\is_scalar($id) || $designated !== (string) $id)) {
-            $this->logger->error('Axepta notification designating another payment: ignored.', [
-                'payment_id' => $id,
-                'transaction_id' => $received,
-                'status' => $notification->status?->value,
-                'code' => $notification->code(),
-                'pay_id' => $notification->payId(),
-            ]);
-
-            return;
-        }
-
         $transition = $this->transitionFor($notification);
 
         if (null === $transition) {
@@ -186,6 +187,18 @@ final class NotifyAction implements ActionInterface, ApiAwareInterface
         // since, and failing the payment would leave that money without an order paid.
         if (PaymentTransitions::TRANSITION_FAIL === $transition && !$isLatestAttempt) {
             $this->logger->info('Axepta refusal of a superseded attempt: ignored.', [
+                'payment_id' => $id,
+                'transaction_id' => $received,
+                'status' => $notification->status?->value,
+                'code' => $notification->code(),
+                'pay_id' => $notification->payId(),
+            ]);
+
+            return;
+        }
+
+        if (!$isLatestAttempt && (null === $designated || !\is_scalar($id) || $designated !== (string) $id)) {
+            $this->logger->error('Axepta notification designating another payment: ignored.', [
                 'payment_id' => $id,
                 'transaction_id' => $received,
                 'status' => $notification->status?->value,
@@ -276,7 +289,7 @@ final class NotifyAction implements ActionInterface, ApiAwareInterface
                 'payment_id' => $payment->getId(),
                 'reason' => $notification->rejection?->value,
                 'code' => $notification->code(),
-                'transaction_id' => $notification->transactionId(),
+                'transaction_id' => mb_substr((string) $notification->transactionId(), 0, 64),
                 'client_ip' => $clientIp,
             ],
         );

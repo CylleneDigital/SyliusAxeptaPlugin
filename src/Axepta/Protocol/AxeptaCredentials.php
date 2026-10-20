@@ -66,9 +66,9 @@ final readonly class AxeptaCredentials
         return ($this->cipherFactory ?? new BlowfishEcbFactory())->create(self::reveal($this->blowfishKey));
     }
 
-    private static function reveal(#[\SensitiveParameter] \SensitiveParameterValue $key): string
+    private static function reveal(\SensitiveParameterValue $wrapped): string
     {
-        $value = $key->getValue();
+        $value = $wrapped->getValue();
         \assert(\is_string($value));
 
         return $value;

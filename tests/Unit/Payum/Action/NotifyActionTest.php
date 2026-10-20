@@ -74,21 +74,49 @@ final class NotifyActionTest extends TestCase
     }
 
     /**
-     * Alternative payment means notify over GET, which v1 does not handle: such a notification
-     * reaching this URL may carry money taken, and must not vanish silently.
+     * Alternative payment means notify over GET, which v1 does not handle: a genuine one reaching
+     * this URL may carry money taken, and must stand out. Anyone can send a GET, though: only its
+     * signature earns it the error level.
+     *
+     * @return iterable<string, array{bool, string}>
      */
-    public function testAGetNotificationIsReportedAsAnError(): void
+    public static function getNotifications(): iterable
+    {
+        yield 'genuine' => [true, 'error'];
+        yield 'not authenticated' => [false, 'warning'];
+    }
+
+    #[DataProvider('getNotifications')]
+    public function testAGetNotificationIsReportedByItsAuthenticity(bool $genuine, string $expectedLevel): void
     {
         $stateMachine = $this->createMock(StateMachineInterface::class);
         $stateMachine->expects(self::never())->method('apply');
 
-        $requestStack = new RequestStack();
-        $requestStack->push(Request::create('/notify', 'GET', ['Data' => '0011223344556677']));
+        $requestStack = $genuine
+            ? $this->notifiedWith(self::LATEST_ATTEMPT, method: 'GET')
+            : $this->requestWith('GET', ['Data' => '0011223344556677']);
         $logger = $this->recordingLogger();
 
         $this->action($requestStack, $stateMachine, $logger)->execute($this->notify($this->payment(1), self::LATEST_ATTEMPT));
 
-        self::assertSame(['error'], $logger->levels);
+        self::assertSame([$expectedLevel], $logger->levels);
+    }
+
+    /**
+     * The plugin asks for encrypted responses: a POST without `Data` is not from the bank. Its clear
+     * fields are not even verified - a sender would otherwise choose the code and the transaction
+     * identifier reported in the rejection.
+     */
+    public function testAPostWithoutPayloadIsRejectedUnverified(): void
+    {
+        $stateMachine = $this->createMock(StateMachineInterface::class);
+        $stateMachine->expects(self::never())->method('apply');
+        $logger = $this->recordingLogger();
+
+        $this->action($this->requestWith('POST', ['Code' => '20100044', 'Status' => 'OK']), $stateMachine, $logger)
+            ->execute($this->notify($this->payment(1), self::LATEST_ATTEMPT));
+
+        self::assertSame(['warning'], $logger->levels);
     }
 
     /**
@@ -202,7 +230,7 @@ final class NotifyActionTest extends TestCase
     }
 
     /** A genuine notification, as the bank posts it. */
-    private function notifiedWith(string $transactionId, string $status = 'OK'): RequestStack
+    private function notifiedWith(string $transactionId, string $status = 'OK', string $method = 'POST'): RequestStack
     {
         $credentials = $this->credentials();
         $code = 'OK' === $status ? '00000000' : '22720040';
@@ -224,8 +252,16 @@ final class NotifyActionTest extends TestCase
             'MAC=' . $mac,
         ]);
 
+        return $this->requestWith($method, ['Data' => bin2hex($credentials->cipher()->encrypt($payload))]);
+    }
+
+    /**
+     * @param array<string, string> $parameters
+     */
+    private function requestWith(string $method, array $parameters): RequestStack
+    {
         $requestStack = new RequestStack();
-        $requestStack->push(Request::create('/notify', 'POST', ['Data' => bin2hex($credentials->cipher()->encrypt($payload))]));
+        $requestStack->push(Request::create('/notify', $method, $parameters));
 
         return $requestStack;
     }

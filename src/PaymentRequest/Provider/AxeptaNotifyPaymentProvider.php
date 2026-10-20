@@ -81,17 +81,11 @@ final readonly class AxeptaNotifyPaymentProvider implements NotifyPaymentProvide
     public function getPayment(Request $request, PaymentMethodInterface $paymentMethod): PaymentInterface
     {
         // Accepted limitation of v1: cards notify over POST. Alternative payment means notify
-        // over GET and are not in scope yet - one that does reach this URL may have been paid.
-        if ($request->isMethod('GET') && $request->query->has('Data')) {
-            $this->logger->error('Axepta notification over GET, as alternative payment means send it, is not supported: rejected. The payment page offered more than cards, check `payment_page_url`.', [
-                'payment_method' => $paymentMethod->getCode(),
-                'client_ip' => $request->getClientIp(),
-            ]);
+        // over GET and are not in scope yet - one that does reach this URL may have been paid,
+        // which only its signature can tell.
+        $isGetNotification = $request->isMethod('GET') && $request->query->has('Data');
 
-            throw new NotFoundHttpException('Axepta notification over GET is not supported.');
-        }
-
-        if (!$request->isMethod('POST') || !$request->request->has('Data')) {
+        if (!$isGetNotification && (!$request->isMethod('POST') || !$request->request->has('Data'))) {
             $this->logger->warning('Axepta notification without an encrypted payload: rejected.', [
                 'payment_method' => $paymentMethod->getCode(),
                 'http_method' => $request->getMethod(),
@@ -101,6 +95,8 @@ final readonly class AxeptaNotifyPaymentProvider implements NotifyPaymentProvide
             throw new NotFoundHttpException('Axepta notification without an encrypted payload.');
         }
 
+        // Logged as an error before any authentication: only a payment method left broken can be
+        // flooded that way, and it has to be repaired anyway.
         try {
             $credentials = $this->credentialsProvider->fromPaymentMethod($paymentMethod);
         } catch (InvalidCredentialsException $exception) {
@@ -115,7 +111,7 @@ final readonly class AxeptaNotifyPaymentProvider implements NotifyPaymentProvide
         // Symfony 7 annotates `all()` as `array<string, mixed>`; 6.4 returns a bare `array`,
         // which static analysis refuses to pass to the verifier.
         /** @var array<string, mixed> $requestParameters */
-        $requestParameters = $request->request->all();
+        $requestParameters = $isGetNotification ? $request->query->all() : $request->request->all();
 
         $notification = $this->notificationVerifier->verify($credentials, $requestParameters);
 
@@ -138,6 +134,17 @@ final readonly class AxeptaNotifyPaymentProvider implements NotifyPaymentProvide
             );
 
             throw new NotFoundHttpException('Axepta notification not authenticated.');
+        }
+
+        if ($isGetNotification) {
+            $this->logger->error('Axepta notification over GET, as alternative payment means send it, is not supported: rejected. The payment page offered more than cards, check `payment_page_url`.', [
+                'payment_method' => $paymentMethod->getCode(),
+                'transaction_id' => $notification->transactionId(),
+                'status' => $notification->status?->value,
+                'pay_id' => $notification->payId(),
+            ]);
+
+            throw new NotFoundHttpException('Axepta notification over GET is not supported.');
         }
 
         // From here on the message is genuine: only the bank can send it, money may have been

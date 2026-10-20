@@ -208,6 +208,20 @@ final class PaymentRequestNotifyTest extends WebTestCase
         self::assertSame(PaymentInterface::STATE_NEW, $this->stateOf($payment));
     }
 
+    /** A GET nobody signed is internet noise like any other: a warning, not an error. */
+    public function testAnUnauthenticatedGetNotificationIsOnlyAWarning(): void
+    {
+        $this->client->disableReboot();
+
+        [$paymentMethod, $payment] = $this->pendingCapture('getnoise');
+
+        $this->client->request('GET', '/payment-methods/' . $paymentMethod->getCode(), ['Data' => '0011223344556677']);
+
+        self::assertSame(Response::HTTP_NOT_FOUND, $this->client->getResponse()->getStatusCode());
+        $this->assertLogged(Level::Warning, 'Axepta notification rejected, no payment looked up.');
+        self::assertSame(PaymentInterface::STATE_NEW, $this->stateOf($payment));
+    }
+
     /** A POST without `Data` does not reach Sylius' composite provider either. */
     public function testAPostWithoutPayloadIsRejectedWithoutError(): void
     {

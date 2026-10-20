@@ -44,6 +44,7 @@ final class AxeptaCredentialsTest extends TestCase
     public function testTheCredentialsCannotBeSerialised(): void
     {
         $this->expectException(\Exception::class);
+        $this->expectExceptionMessage("Serialization of 'SensitiveParameterValue' is not allowed");
 
         serialize(new AxeptaCredentials('BNP_TEST_MERCHANT', 'hmac', 'blowfish'));
     }
