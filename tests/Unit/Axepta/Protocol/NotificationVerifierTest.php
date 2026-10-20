@@ -174,6 +174,26 @@ final class NotificationVerifierTest extends TestCase
         self::assertFalse($notification->isPaid());
     }
 
+    /**
+     * A `Data` that deciphers to noise must not let clear fields through: a stranger could otherwise
+     * pick the `Code` and the `TransID` reported in the rejection - a signature code raising the
+     * "check the HMAC key" alarm, a field as large as the request.
+     */
+    public function testClearFieldsDoNotSurviveAPayloadThatDeciphersToNoise(): void
+    {
+        $notification = $this->verify([
+            'Data' => '0000000000000000',
+            'Code' => '20100044',
+            'TransID' => str_repeat('x', 1000),
+            'Status' => 'OK',
+        ]);
+
+        self::assertFalse($notification->macValid);
+        self::assertNull($notification->transactionId());
+        self::assertNull($notification->code());
+        self::assertFalse($notification->signalsSignatureMismatch());
+    }
+
     /** A status outside the enum counts as "not paid", never as an error. */
     public function testTreatsAnUnknownStatusAsUnpaid(): void
     {
