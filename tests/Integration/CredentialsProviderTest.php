@@ -82,6 +82,10 @@ final class CredentialsProviderTest extends KernelTestCase
     /** An exception raised while building the credentials must not carry the keys in its trace. */
     public function testTheKeysStayOutOfAnExceptionTrace(): void
     {
+        if (filter_var(\ini_get('zend.exception_ignore_args'), \FILTER_VALIDATE_BOOL)) {
+            self::markTestSkipped('zend.exception_ignore_args is on: traces carry no argument to inspect.');
+        }
+
         try {
             $this->provider()->fromArray(['merchant_id' => '', 'hmac_key' => 'HMAC-KEY-IN-TRACE', 'blowfish_key' => 'BLOWFISH-IN-TRACE']);
             self::fail('Credentials without a merchant identifier must be refused.');

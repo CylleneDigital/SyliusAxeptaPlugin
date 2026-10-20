@@ -208,7 +208,7 @@ final class PaymentRequestNotifyTest extends WebTestCase
         self::assertSame(PaymentInterface::STATE_NEW, $this->stateOf($payment));
     }
 
-    /** Neither a GET nor a POST without `Data` reaches Sylius' composite provider. */
+    /** A POST without `Data` does not reach Sylius' composite provider either. */
     public function testAPostWithoutPayloadIsRejectedWithoutError(): void
     {
         $this->client->disableReboot();
@@ -219,6 +219,30 @@ final class PaymentRequestNotifyTest extends WebTestCase
 
         self::assertSame(Response::HTTP_NOT_FOUND, $this->client->getResponse()->getStatusCode());
         $this->assertLogged(Level::Warning, 'Axepta notification without an encrypted payload: rejected.');
+        self::assertSame(PaymentInterface::STATE_NEW, $this->stateOf($payment));
+    }
+
+    /**
+     * Keys missing from the gateway configuration used to throw from the credentials, a 500 logged
+     * nowhere near Axepta. It is the same 404 as any message that cannot be tied to a payment, and
+     * an error on the Axepta channel: no payment of that method can be verified until it is fixed.
+     */
+    public function testANotificationOnAnIncompletelyConfiguredMethodIsRejectedWithoutError(): void
+    {
+        $this->client->disableReboot();
+
+        [$paymentMethod, $payment, $forger, $transactionId] = $this->pendingCapture('incomplete');
+        $notification = $forger->forge($transactionId);
+
+        $gatewayConfig = $paymentMethod->getGatewayConfig();
+        \assert(null !== $gatewayConfig);
+        $gatewayConfig->setConfig(['merchant_id' => PaymentScenario::MERCHANT_ID, 'hmac_key' => '', 'blowfish_key' => PaymentScenario::BLOWFISH_KEY]);
+        $this->scenario->flush();
+
+        $this->notify($paymentMethod, $notification);
+
+        self::assertSame(Response::HTTP_NOT_FOUND, $this->client->getResponse()->getStatusCode());
+        $this->assertLogged(Level::Error, 'Axepta notification on a payment method whose configuration is incomplete: rejected.');
         self::assertSame(PaymentInterface::STATE_NEW, $this->stateOf($payment));
     }
 

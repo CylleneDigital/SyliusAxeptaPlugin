@@ -28,12 +28,13 @@ use Symfony\Component\HttpFoundation\RequestStack;
  * already-handled payment. Every failure is therefore caught and logged, and the request ends
  * normally.
  *
- * Three behaviours follow:
+ * What follows:
  * - MAC not genuine → no transition, logged as `warning`;
- * - payment accepted → `complete` transition, guarded by `can()`: a double notification, the
- *   nominal case at BNP, is then a no-op;
+ * - `TransID` designating another payment → no transition, logged as `error`;
+ * - payment accepted, on any attempt of the payment → `complete` transition, guarded by `can()`: a
+ *   double notification, the nominal case at BNP, is then a no-op;
  * - payment refused on the latest attempt → `fail` transition, which lets the customer retry from
- *   their order.
+ *   their order; refused on a superseded attempt → ignored.
  *
  * @internal
  */
@@ -109,9 +110,22 @@ final class NotifyAction implements ActionInterface, ApiAwareInterface
     {
         $httpRequest = $this->requestStack->getCurrentRequest();
 
+        if (null === $httpRequest) {
+            return;
+        }
+
         // Accepted limitation of v1: cards notify over POST. Alternative payment means notify
-        // over GET and are not in scope yet.
-        if (null === $httpRequest || !$httpRequest->isMethod('POST')) {
+        // over GET and are not in scope yet - one that does reach this URL may have been paid.
+        if ($httpRequest->isMethod('GET') && $httpRequest->query->has('Data')) {
+            $this->logger->error('Axepta notification over GET, as alternative payment means send it, is not supported: rejected. The payment page offered more than cards, check `payment_page_url`.', [
+                'payment_id' => $payment->getId(),
+                'client_ip' => $httpRequest->getClientIp(),
+            ]);
+
+            return;
+        }
+
+        if (!$httpRequest->isMethod('POST')) {
             return;
         }
 
@@ -153,6 +167,7 @@ final class NotifyAction implements ActionInterface, ApiAwareInterface
                 'payment_id' => $id,
                 'transaction_id' => $received,
                 'status' => $notification->status?->value,
+                'code' => $notification->code(),
                 'pay_id' => $notification->payId(),
             ]);
 
@@ -219,10 +234,6 @@ final class NotifyAction implements ActionInterface, ApiAwareInterface
     }
 
     /**
-     * Logs a rejection without disclosing anything exploitable: neither the payload, nor its
-     * useful length, nor the slightest hint of what would have made the signature acceptable.
-     */
-    /**
      * The transition to apply, or `null` if the bank used a status we do not know.
      *
      * The status enum is **not** exhaustive from the platform's point of view, and it may introduce
@@ -251,6 +262,10 @@ final class NotifyAction implements ActionInterface, ApiAwareInterface
         ]);
     }
 
+    /**
+     * Logs a rejection without disclosing anything exploitable: neither the payload, nor its
+     * useful length, nor the slightest hint of what would have made the signature acceptable.
+     */
     private function logRejectedNotification(PaymentInterface $payment, Notification $notification, ?string $clientIp): void
     {
         $this->logger->warning(

@@ -55,7 +55,7 @@ final class SecretLeakTest extends TestCase
             if (1 !== preg_match('/^namespace\s+([^;]+);/m', $source, $ns)) {
                 continue;
             }
-            if (1 !== preg_match('/^(?:final\s+)?(?:readonly\s+)?(?:abstract\s+)?class\s+(\w+)/m', $source, $cn)) {
+            if (1 !== preg_match('/^(?:final\s+|readonly\s+|abstract\s+)*class\s+(\w+)/m', $source, $cn)) {
                 continue;
             }
 
@@ -131,7 +131,7 @@ final class SecretLeakTest extends TestCase
             foreach ((new \ReflectionClass($class))->getMethods() as $method) {
                 // A method inherited from a library - Payum's `create(array $config)` - is not
                 // ours to mark.
-                if ($method->getDeclaringClass()->getName() !== $class) {
+                if (!str_starts_with($method->getDeclaringClass()->getName(), 'CylleneDigital\\SyliusAxeptaPlugin\\')) {
                     continue;
                 }
 

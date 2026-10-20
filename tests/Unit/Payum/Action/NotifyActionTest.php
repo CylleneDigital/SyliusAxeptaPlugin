@@ -12,6 +12,7 @@ use Payum\Core\Request\Notify;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\AbstractLogger;
+use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use Sylius\Abstraction\StateMachine\StateMachineInterface;
 use Sylius\Component\Core\Model\Payment;
@@ -62,11 +63,32 @@ final class NotifyActionTest extends TestCase
         $stateMachine->expects(self::never())->method('apply');
 
         $payment = $this->payment(1);
+        $logger = $this->recordingLogger();
 
-        $this->action($this->notifiedWith('sylius-999-0123456789abcdef'), $stateMachine)
+        $this->action($this->notifiedWith('sylius-999-0123456789abcdef'), $stateMachine, $logger)
             ->execute($this->notify($payment, self::LATEST_ATTEMPT));
 
         self::assertSame(PaymentInterface::STATE_NEW, $payment->getState());
+        // Only the bank can sign it: money may be at stake, not internet noise.
+        self::assertSame(['error'], $logger->levels);
+    }
+
+    /**
+     * Alternative payment means notify over GET, which v1 does not handle: such a notification
+     * reaching this URL may carry money taken, and must not vanish silently.
+     */
+    public function testAGetNotificationIsReportedAsAnError(): void
+    {
+        $stateMachine = $this->createMock(StateMachineInterface::class);
+        $stateMachine->expects(self::never())->method('apply');
+
+        $requestStack = new RequestStack();
+        $requestStack->push(Request::create('/notify', 'GET', ['Data' => '0011223344556677']));
+        $logger = $this->recordingLogger();
+
+        $this->action($requestStack, $stateMachine, $logger)->execute($this->notify($this->payment(1), self::LATEST_ATTEMPT));
+
+        self::assertSame(['error'], $logger->levels);
     }
 
     /**
@@ -145,22 +167,13 @@ final class NotifyActionTest extends TestCase
         $stateMachine->method('can')->willReturn(false);
         $stateMachine->expects(self::never())->method('apply');
 
-        $logger = new class() extends AbstractLogger {
-            /** @var list<string> */
-            public array $levels = [];
-
-            public function log($level, \Stringable|string $message, array $context = []): void
-            {
-                $this->levels[] = \is_string($level) ? $level : 'unexpected';
-            }
-        };
+        $logger = $this->recordingLogger();
 
         $payment = $this->payment(1);
         $payment->setState($state);
 
-        $action = new NotifyAction($this->notifiedWith(self::LATEST_ATTEMPT), $stateMachine, new NotificationVerifier(), new PrefixedTransactionIdGenerator(), $logger);
-        $action->setApi($this->credentials());
-        $action->execute($this->notify($payment, self::LATEST_ATTEMPT));
+        $this->action($this->notifiedWith(self::LATEST_ATTEMPT), $stateMachine, $logger)
+            ->execute($this->notify($payment, self::LATEST_ATTEMPT));
 
         self::assertSame([$expectedLevel], $logger->levels);
     }
@@ -174,14 +187,14 @@ final class NotifyActionTest extends TestCase
             ->execute($this->notify($this->payment(1), self::LATEST_ATTEMPT));
     }
 
-    private function action(RequestStack $requestStack, StateMachineInterface $stateMachine): NotifyAction
+    private function action(RequestStack $requestStack, StateMachineInterface $stateMachine, ?LoggerInterface $logger = null): NotifyAction
     {
         $action = new NotifyAction(
             $requestStack,
             $stateMachine,
             new NotificationVerifier(),
             new PrefixedTransactionIdGenerator(),
-            new NullLogger(),
+            $logger ?? new NullLogger(),
         );
         $action->setApi($this->credentials());
 
@@ -232,6 +245,22 @@ final class NotifyActionTest extends TestCase
         (new \ReflectionProperty(Payment::class, 'id'))->setValue($payment, $id);
 
         return $payment;
+    }
+
+    /**
+     * @return AbstractLogger&object{levels: list<string>}
+     */
+    private function recordingLogger(): AbstractLogger
+    {
+        return new class() extends AbstractLogger {
+            /** @var list<string> */
+            public array $levels = [];
+
+            public function log($level, \Stringable|string $message, array $context = []): void
+            {
+                $this->levels[] = \is_string($level) ? $level : 'unexpected';
+            }
+        };
     }
 
     private function credentials(): AxeptaCredentials

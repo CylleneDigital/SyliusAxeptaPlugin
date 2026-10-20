@@ -22,8 +22,9 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  * payment's own. Forgetting the second would leave the order unpaid while the request reads
  * `completed`.
  *
- * Never lets an exception surface: the bus is synchronous, so an exception would come out as a 500
- * on the notification URL and trigger 8 BNP retries spread over ~21 h 36.
+ * Never lets an exception surface: the `payment_request` transport must stay synchronous (see
+ * `CaptureAxeptaPaymentRequestHandler`), so an exception would come out as a 500 on the notification
+ * URL and trigger 8 BNP retries spread over ~21 h 36.
  *
  * @experimental
  *
