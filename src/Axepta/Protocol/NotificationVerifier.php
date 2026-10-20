@@ -148,8 +148,9 @@ final readonly class NotificationVerifier
         // decipherer strips trailing null bytes **and spaces** - an observed Axepta convention,
         // without which nothing reads back - so a signed field ending in a space would be clipped,
         // the MAC computed on truncated content, and a payment taken never recorded. `Len` exists
-        // precisely to avoid that guesswork.
-        if (null !== $announcedLength && $announcedLength > \strlen($payload)) {
+        // precisely to avoid that guesswork. It is read before the MAC is checked, so it can only
+        // restore what the deciphering stripped: a genuine `Len` never exceeds the deciphered bytes.
+        if (null !== $announcedLength && $announcedLength > \strlen($payload) && $announcedLength <= \strlen($binary)) {
             $payload = str_pad($payload, $announcedLength, ' ');
         }
 
