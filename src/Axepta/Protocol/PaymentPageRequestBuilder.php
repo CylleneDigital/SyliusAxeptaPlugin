@@ -85,6 +85,10 @@ final readonly class PaymentPageRequestBuilder
      * ISO-8859-1. `Len` is computed on the result: an accented `OrderDesc` does not occupy the same
      * number of bytes as in UTF-8, and a wrong length invalidates the MAC on the BNP side.
      *
+     * A character ISO-8859-1 cannot hold becomes a `?`, whatever the server's
+     * `mbstring.substitute_character`: under `entity`, a `€` would become `&#x20AC;` and bring an
+     * `&` back into the payload after the description was cleaned.
+     *
      * @param array<string, string|null> $fields
      */
     private function composePayload(array $fields): string
@@ -98,7 +102,14 @@ final readonly class PaymentPageRequestBuilder
             $pairs[] = $name . '=' . $value;
         }
 
-        return (string) mb_convert_encoding(implode('&', $pairs), self::PAYLOAD_ENCODING, 'UTF-8');
+        $substituteCharacter = mb_substitute_character();
+        mb_substitute_character(0x3F);
+
+        try {
+            return (string) mb_convert_encoding(implode('&', $pairs), self::PAYLOAD_ENCODING, 'UTF-8');
+        } finally {
+            mb_substitute_character($substituteCharacter);
+        }
     }
 
     private function orderDescription(PaymentPageRequestContext $context): string

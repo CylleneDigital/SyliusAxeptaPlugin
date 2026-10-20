@@ -16,6 +16,10 @@ already promised: the Blowfish cipher throws `InvalidCipherInputException`, the 
 so an existing `catch` keeps working. A `catch (AxeptaException)` now also catches a return URL
 refused for carrying an `&`.
 
+A character ISO-8859-1 cannot hold now always becomes a `?` in the payload, whatever
+`mbstring.substitute_character` says. A server setting it to `entity` used to put an `&` in the
+payload, which cut the message in two at the bank.
+
 ## From 1.1.x to 1.1.2
 
 Nothing to change in a project that only configures the plugin through the back office and the
