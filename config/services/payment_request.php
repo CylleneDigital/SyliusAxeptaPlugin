@@ -48,6 +48,7 @@ return static function (ContainerConfigurator $container): void {
             service('router'),
             service('cyllene_digital_sylius_axepta.provider.return_url'),
             service('logger'),
+            service('request_stack'),
         ])
         ->tag('messenger.message_handler', ['bus' => 'sylius.payment_request.command_bus'])
         ->tag('monolog.logger', ['channel' => '%cyllene_digital_sylius_axepta.logger_channel%']);
