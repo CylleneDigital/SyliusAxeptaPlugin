@@ -59,7 +59,7 @@ final readonly class NotificationVerifier
     ];
 
     /**
-     * @param array<string, mixed> $requestParameters raw parameters of the incoming request
+     * @param array<array-key, mixed> $requestParameters raw parameters of the incoming request
      */
     public function verify(AxeptaCredentials $credentials, array $requestParameters): Notification
     {
@@ -172,7 +172,7 @@ final readonly class NotificationVerifier
     }
 
     /**
-     * @param array<string, mixed> $parameters
+     * @param array<array-key, mixed> $parameters
      *
      * @return array<string, string>
      */
@@ -184,7 +184,9 @@ final readonly class NotificationVerifier
                 continue;
             }
 
-            $canonical[self::CANONICAL_NAMES[strtolower($name)] ?? $name] = (string) $value;
+            // A form field named `0` reaches here as an integer key: under strict types,
+            // `strtolower()` would throw on it, and the notification URL would answer a 500.
+            $canonical[self::CANONICAL_NAMES[strtolower((string) $name)] ?? (string) $name] = (string) $value;
         }
 
         return $canonical;

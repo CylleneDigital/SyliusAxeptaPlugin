@@ -20,7 +20,7 @@ configuration.
 
 ### Notifications without an encrypted payload
 
-Both paths now turn away a notification that carries no `Data`: the plugin asks the bank for
+Both paths now turn away a notification that carries no `Data` string: the plugin asks the bank for
 encrypted responses, and the bank sends nothing else (observed on every notification). The Payum
 path used to verify the clear parameters of such a message and could apply it; it logs a warning
 and ignores it now. On the PaymentRequest path, a POST without `Data` or a GET without `Data` used

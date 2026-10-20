@@ -125,6 +125,22 @@ final class NotifyActionTest extends TestCase
     }
 
     /**
+     * A field named `0` reaches the verifier as an integer key: it once threw there, which this
+     * action's catch-all turned into an error log - an error any stranger could raise.
+     */
+    public function testANumericParameterNameIsAnOrdinaryRejection(): void
+    {
+        $stateMachine = $this->createMock(StateMachineInterface::class);
+        $stateMachine->expects(self::never())->method('apply');
+        $logger = $this->recordingLogger();
+
+        $this->action($this->requestWith('POST', ['Data' => '0011223344556677', 0 => 'x']), $stateMachine, $logger)
+            ->execute($this->notify($this->payment(1), self::LATEST_ATTEMPT));
+
+        self::assertSame(['warning'], $logger->levels);
+    }
+
+    /**
      * @return iterable<string, array{array<string, mixed>}>
      */
     public static function postsWithoutPayload(): iterable
@@ -271,7 +287,7 @@ final class NotifyActionTest extends TestCase
     }
 
     /**
-     * @param array<string, mixed> $parameters
+     * @param array<array-key, mixed> $parameters
      */
     private function requestWith(string $method, array $parameters): RequestStack
     {

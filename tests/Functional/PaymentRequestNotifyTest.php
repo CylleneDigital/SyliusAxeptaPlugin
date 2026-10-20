@@ -236,6 +236,20 @@ final class PaymentRequestNotifyTest extends WebTestCase
         self::assertSame(PaymentInterface::STATE_NEW, $this->stateOf($payment));
     }
 
+    /** A field named `0` once made the verifier throw: a 500 anyone could trigger. */
+    public function testANumericParameterNameIsAnOrdinaryRejection(): void
+    {
+        $this->client->disableReboot();
+
+        [$paymentMethod, $payment] = $this->pendingCapture('numericname');
+
+        $this->client->request('POST', '/payment-methods/' . $paymentMethod->getCode(), ['Data' => '0011223344556677', 0 => 'x']);
+
+        self::assertSame(Response::HTTP_NOT_FOUND, $this->client->getResponse()->getStatusCode());
+        $this->assertLogged(Level::Warning, 'Axepta notification rejected, no payment looked up.');
+        self::assertSame(PaymentInterface::STATE_NEW, $this->stateOf($payment));
+    }
+
     /** A `Data` sent as an array is no payload: the clear fields beside it are not even verified. */
     public function testAPayloadSentAsAnArrayIsRejectedUnverified(): void
     {

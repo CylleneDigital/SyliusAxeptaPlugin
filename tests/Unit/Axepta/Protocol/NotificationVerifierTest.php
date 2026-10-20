@@ -121,7 +121,7 @@ final class NotificationVerifierTest extends TestCase
     }
 
     /**
-     * @return iterable<string, array{array<string, mixed>}>
+     * @return iterable<string, array{array<array-key, mixed>}>
      */
     public static function unusableNotifications(): iterable
     {
@@ -131,10 +131,12 @@ final class NotificationVerifierTest extends TestCase
         yield 'empty request' => [[]];
         yield 'without MAC' => [['Status' => 'OK', 'TransID' => self::TRANSACTION_ID]];
         yield 'MAC vide' => [['Status' => 'OK', 'MAC' => '']];
+        // A form field named `0` arrives as an integer key.
+        yield 'numeric parameter name' => [['Data' => '0011223344556677', 0 => 'x']];
     }
 
     /**
-     * @param array<string, mixed> $parameters
+     * @param array<array-key, mixed> $parameters
      */
     #[DataProvider('unusableNotifications')]
     public function testNeverThrowsOnAnUnusableNotification(array $parameters): void
@@ -269,7 +271,7 @@ final class NotificationVerifierTest extends TestCase
     }
 
     /**
-     * @param array<string, mixed> $parameters
+     * @param array<array-key, mixed> $parameters
      */
     private function verify(array $parameters): \CylleneDigital\SyliusAxeptaPlugin\Axepta\Protocol\Notification
     {
