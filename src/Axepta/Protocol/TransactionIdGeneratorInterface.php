@@ -34,7 +34,10 @@ interface TransactionIdGeneratorInterface
      *
      * It is the only link between a notification and its payment when the notification URL is
      * shared across the payment method - the case of the `PaymentRequest` path, where it carries
-     * the method code rather than a token specific to the payment.
+     * the method code rather than a token specific to the payment. The Payum path relies on it too,
+     * to accept the notification of an earlier attempt of a payment: Sylius renews the `TransID`
+     * every time the payment page is reopened, while the bank page of the previous attempt can
+     * still be paid.
      *
      * It is part of the contract, not a convention guessed by the caller: **substituting the
      * generator requires supplying its inverse.** Failing that, no notification will ever be tied

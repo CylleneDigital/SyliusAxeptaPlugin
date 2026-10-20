@@ -151,7 +151,7 @@ final class NotifyAction implements ActionInterface, ApiAwareInterface
         if (!$isLatestAttempt && (null === $designated || !\is_scalar($id) || $designated !== (string) $id)) {
             $this->logger->error('Axepta notification designating another payment: ignored.', [
                 'payment_id' => $id,
-                'received_transaction_id' => $received,
+                'transaction_id' => $received,
                 'status' => $notification->status?->value,
                 'pay_id' => $notification->payId(),
             ]);
@@ -172,8 +172,10 @@ final class NotifyAction implements ActionInterface, ApiAwareInterface
         if (PaymentTransitions::TRANSITION_FAIL === $transition && !$isLatestAttempt) {
             $this->logger->info('Axepta refusal of a superseded attempt: ignored.', [
                 'payment_id' => $id,
-                'received_transaction_id' => $received,
+                'transaction_id' => $received,
+                'status' => $notification->status?->value,
                 'code' => $notification->code(),
+                'pay_id' => $notification->payId(),
             ]);
 
             return;

@@ -16,6 +16,13 @@ from the bundle setting `cyllene_digital_sylius_axepta.payment_page_url` only. T
 wrote that key; a project that set it by hand in the database must move the value to the bundle
 configuration.
 
+Monitoring keyed on the `axepta` log channel may need adjusting. On the Payum path, "Axepta
+notification tied to the wrong payment" (warning) became "Axepta notification designating another
+payment" (error). New errors report what needs a person: a paid notification that can no longer
+settle its payment, an authenticated notification matching no payment, a GET notification of
+alternative payment means, a payment method whose configuration is incomplete, and a capture
+handled outside an HTTP request.
+
 A project that registered its own notify payment provider for Axepta payment methods - to handle
 GET notifications of alternative payment means, for instance - must give it a priority above 10:
 the plugin's provider now claims every request on an Axepta payment method's notification URL,

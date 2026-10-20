@@ -67,6 +67,8 @@ final readonly class NotifyAxeptaPaymentRequestHandler
             $this->receivedParameters($paymentRequest),
         );
 
+        // The notify payment provider already turned away any unauthenticated message: this check
+        // only bites if the configuration changed between the two, and stays as defence in depth.
         if (!$notification->macValid) {
             // Nothing exploitable in the context: neither the payload, nor what would have made
             // the signature acceptable. The source address and the reason are enough to operate on.
@@ -121,6 +123,8 @@ final readonly class NotifyAxeptaPaymentRequestHandler
             return;
         }
 
+        // Unlike the Payum path, a refusal needs no "latest attempt" check here: Sylius reuses the
+        // capture request while it is not final, so a payment keeps a single `TransID`.
         $transition = $notification->isPaid()
             ? PaymentTransitions::TRANSITION_COMPLETE
             : PaymentTransitions::TRANSITION_FAIL;
