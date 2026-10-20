@@ -13,11 +13,17 @@ namespace CylleneDigital\SyliusAxeptaPlugin\Axepta\Crypto;
  *
  * Request fields (outgoing)     : PayID, TransID, MerchantID, Amount, Currency.
  * Response fields (notification): PayID, TransID, MerchantID, Status, Code.
+ *
+ * The key is held in `\SensitiveParameterValue`, like in `AxeptaCredentials`: a private string
+ * property is printed by `dump()`, `var_dump()` and `print_r()`.
  */
 final readonly class HmacSigner
 {
-    public function __construct(#[\SensitiveParameter] private string $secretKey)
+    private \SensitiveParameterValue $secretKey;
+
+    public function __construct(#[\SensitiveParameter] string $secretKey)
     {
+        $this->secretKey = new \SensitiveParameterValue($secretKey);
     }
 
     /**
@@ -25,7 +31,10 @@ final readonly class HmacSigner
      */
     public function sign(array $values): string
     {
-        return hash_hmac('sha256', implode('*', $values), $this->secretKey);
+        $secretKey = $this->secretKey->getValue();
+        \assert(\is_string($secretKey));
+
+        return hash_hmac('sha256', implode('*', $values), $secretKey);
     }
 
     /**

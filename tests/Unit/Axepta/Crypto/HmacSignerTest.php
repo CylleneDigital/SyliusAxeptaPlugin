@@ -7,6 +7,8 @@ namespace Tests\CylleneDigital\SyliusAxeptaPlugin\Unit\Axepta\Crypto;
 use CylleneDigital\SyliusAxeptaPlugin\Axepta\Crypto\HmacSigner;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\VarDumper\Cloner\VarCloner;
+use Symfony\Component\VarDumper\Dumper\CliDumper;
 
 final class HmacSignerTest extends TestCase
 {
@@ -120,5 +122,29 @@ final class HmacSignerTest extends TestCase
             (new HmacSigner(self::KEY))->sign($values),
             (new HmacSigner(self::OFFICIAL_KEY))->sign($values),
         );
+    }
+
+    public function testTheKeyAppearsInNoRepresentationOfTheObject(): void
+    {
+        $signer = new HmacSigner('HMAC-KEY-SHOWN');
+
+        $representations = [
+            'dump' => (new CliDumper())->dump((new VarCloner())->cloneVar($signer), true),
+            'print_r' => print_r($signer, true),
+            'var_export' => var_export($signer, true),
+            'array cast' => print_r((array) $signer, true),
+        ];
+
+        foreach ($representations as $name => $representation) {
+            self::assertStringNotContainsString('SHOWN', (string) $representation, \sprintf('The key appears through %s.', $name));
+        }
+    }
+
+    public function testTheSignerCannotBeSerialised(): void
+    {
+        $this->expectException(\Exception::class);
+        $this->expectExceptionMessage("Serialization of 'SensitiveParameterValue' is not allowed");
+
+        serialize(new HmacSigner(self::KEY));
     }
 }

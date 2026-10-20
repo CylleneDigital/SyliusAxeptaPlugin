@@ -16,6 +16,9 @@ already promised: the Blowfish cipher throws `InvalidCipherInputException`, the 
 so an existing `catch` keeps working. A `catch (AxeptaException)` now also catches a return URL
 refused for carrying an `&`.
 
+`HmacSigner` can no longer be serialised: like `AxeptaCredentials` since 1.1.2, it holds its key in
+`\SensitiveParameterValue`. Serialising it wrote the key in clear.
+
 A character ISO-8859-1 cannot hold now always becomes a `?` in the payload, whatever
 `mbstring.substitute_character` says. A server setting it to `entity` used to put an `&` in the
 payload, which cut the message in two at the bank.

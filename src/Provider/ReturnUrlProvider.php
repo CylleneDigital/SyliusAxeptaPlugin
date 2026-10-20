@@ -24,11 +24,15 @@ final readonly class ReturnUrlProvider
     /** 16 bytes: enough to make an exhaustive search pointless, without lengthening the URL. */
     private const SIGNATURE_LENGTH = 32;
 
+    /** Held like the gateway keys: a private string property is printed by `dump()`. */
+    private \SensitiveParameterValue $secret;
+
     public function __construct(
         private UrlGeneratorInterface $urlGenerator,
         #[\SensitiveParameter]
-        private string $secret,
+        string $secret,
     ) {
+        $this->secret = new \SensitiveParameterValue($secret);
     }
 
     public function forPayment(PaymentInterface $payment): string
@@ -52,6 +56,9 @@ final readonly class ReturnUrlProvider
 
     private function sign(string $paymentId): string
     {
-        return substr(hash_hmac('sha256', self::ROUTE . ':' . $paymentId, $this->secret), 0, self::SIGNATURE_LENGTH);
+        $secret = $this->secret->getValue();
+        \assert(\is_string($secret));
+
+        return substr(hash_hmac('sha256', self::ROUTE . ':' . $paymentId, $secret), 0, self::SIGNATURE_LENGTH);
     }
 }
