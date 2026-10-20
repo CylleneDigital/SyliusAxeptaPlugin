@@ -82,11 +82,8 @@ final class AxeptaGatewayConfigurationType extends AbstractType
      * Keeps the existing keys when they come back empty.
      *
      * `PasswordType` never redisplays its value. When editing an existing payment method, both key
-     * fields therefore arrive blank on screen, and without this listener a plain "Save" would
-     * replace them with empty strings.
-     *
-     * The effect would stay invisible until the next payment: the signature goes out computed with
-     * an empty key, the bank rejects it, and nothing in the back office says why.
+     * fields therefore arrive blank on screen, and without this listener their `NotBlank` would
+     * refuse every save until both keys are retyped.
      *
      * Accepted corollary: a key cannot be cleared from the form, only replaced. That is the right
      * trade-off for a value whose absence breaks payments.
