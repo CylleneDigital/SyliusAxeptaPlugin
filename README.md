@@ -56,7 +56,7 @@ sequenceDiagram
     C->>B: Card details, 3-D Secure
     B-->>S: Notification, server to server
     S->>S: Verifies the MAC, advances the payment
-    S-->>B: 200 OK
+    S-->>B: 2xx
     B-->>C: Sends the browser back
     C->>S: Lands on the return route
     S-->>C: Thank-you page or order page
@@ -70,10 +70,15 @@ browser coming back. A customer closing their tab right after paying must still 
 paid. Conversely, a browser coming back proves nothing: it may arrive before the notification, or
 never arrive at all.
 
-**Step 7 must be a `200`.** A 404 or a 500 there triggers 8 retries from the bank spread over
-~21 h 36. The whole notification handling is built around that: no exception surfaces, an unreadable
-message is a non-event, and a double notification - the nominal case at BNP - changes nothing rather
-than failing.
+**Step 7 decides whether the bank retries.** A 404 or a 500 there triggers 8 retries spread over
+~21 h 36; none was seen after a `2xx` within the observation window (`204` on the Payum path,
+`200` on the PaymentRequest path). The notification handling is built around that: a double
+notification - the nominal case at BNP - changes nothing rather than failing, and a handling failure
+on a notification tied to its payment is logged instead of surfacing. On the PaymentRequest path, a
+message that cannot be tied to a payment gets a deliberate 404: the bank only retries what it sent
+itself, and its retries recover a genuine notification once the cause is fixed. Two notifications of
+the same payment arriving at the same instant can still end in a 500; the bank then retries, and the
+retry changes nothing.
 
 ## Installation
 

@@ -65,8 +65,8 @@ Sylius plugins, do not add personal rules to it.
   `ignoreErrors` entry must explain why in its description.
 - **Tests are mandatory** for any bug fix: the test must fail before the fix.
 - **`UPGRADE.md`** updated if the pull request breaks compatibility. The public contract - protocol
-  classes, substitutable interfaces, hookable names, service tags, gateway configuration keys - only
-  breaks in a major version.
+  classes, substitutable interfaces, hookable names, gateway configuration keys - only breaks in a
+  major version.
 - Never a real key, MAC or merchant identifier in the code, the tests, the fixtures or an issue.
   Tests use obviously fake values.
 - The codebase is written in **English**, comments and commit messages included.

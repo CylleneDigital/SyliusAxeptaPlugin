@@ -15,8 +15,8 @@ namespace CylleneDigital\SyliusAxeptaPlugin\Axepta\Crypto;
  *
  * Axepta conventions:
  * - the key is repeated until it reaches at least 16 bytes;
- * - data is padded with null bytes up to a multiple of 8 before encryption, and trailing null bytes
- *   are stripped on decryption.
+ * - data is padded with null bytes up to a multiple of 8 before encryption; on decryption, trailing
+ *   null bytes and spaces are both stripped, BNP padding its responses with spaces.
  *
  * Conformance vectors, checked against legacy `openssl BF-ECB`, live in the unit tests, including
  * the standard Blowfish vector (null key and null plaintext → `4ef997456198dd78`).

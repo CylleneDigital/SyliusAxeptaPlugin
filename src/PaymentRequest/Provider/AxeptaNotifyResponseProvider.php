@@ -13,8 +13,8 @@ use Symfony\Component\HttpFoundation\Response;
  * Answers **200** to Axepta notifications, where the framework answers 204.
  *
  * BNP's documentation establishes that a 404 or a 500 triggers 8 retries spread over ~21 h 36,
- * without ever writing that a 204 stops them - only the 200 is mentioned, and BNP confirmed in
- * writing that it does stop them. A 204 would remain a gamble.
+ * without writing what stops them. That a 2xx does is observed, not documented: no retry followed
+ * this 200, nor the 204 the Payum path answers. The 200 stays as the most conventional answer.
  *
  * The service decorates Sylius' own and only changes the response for our factory: other gateways
  * of the host application keep their behaviour.

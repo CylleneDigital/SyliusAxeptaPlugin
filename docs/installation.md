@@ -160,9 +160,9 @@ The Axepta protocol encrypts its data with Blowfish-ECB. Since OpenSSL 3, that a
 moved to the *legacy provider*, disabled by default: `openssl_encrypt($data, 'BF-ECB', ...)` returns
 `false` on any recent PHP image.
 
-The plugin therefore ships its own implementation, checked against the reference vectors - including
-the standard Blowfish vector. You have nothing to enable, and no obsolete algorithm is re-enabled
-globally in your image.
+The plugin therefore ships its own implementation, checked against the output of OpenSSL's legacy
+`BF-ECB` and against the standard Blowfish vector. You have nothing to enable, and no obsolete
+algorithm is re-enabled globally in your image.
 
 If you have a native implementation or an HSM, substitute `BlowfishEcbFactoryInterface`:
 
