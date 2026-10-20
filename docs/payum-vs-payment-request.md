@@ -79,8 +79,8 @@ under the `notify` action. There is therefore never a final state to hit, and th
 out.
 
 In exchange, the URL does not say which payment the notification refers to.
-`AxeptaNotifyPaymentProvider` resolves that from the `TransID` - the only identifier the platform
-returns reliably, since it is part of the response signature.
+`AxeptaNotifyPaymentProvider` resolves that from the `TransID` - the only identifier of ours the
+platform returns reliably, since it is part of the response signature.
 
 The resolution goes through **the inverse of the generator that emitted the identifier**,
 `TransactionIdGeneratorInterface::resolvePaymentIdentifier()`, which reads the payment by primary
@@ -95,20 +95,20 @@ substituting the generator therefore requires supplying its inverse.
 ## Answering notifications
 
 On the PaymentRequest path, the Sylius foundation answers `204 No Content`; this plugin answers
-**`200 OK`** to its own notifications there. BNP's documentation only writes that a 404 or a 500 triggers the retries; that a
-`2xx` stops them is observed, on both codes - the Payum path answers `204`, and no retry was seen
-there either. The `200` is kept as the most conventional answer, not because the `204` was seen to
-fail.
+**`200 OK`** to its own notifications there. BNP's documentation only writes that a 404 or a 500
+triggers the retries; that a `2xx` stops them is observed, on both codes - the Payum path answers
+`204`, and no retry was seen there either. The `200` is kept as the most conventional answer, not
+because the `204` was seen to fail.
 
 The decoration only applies to requests of the `axepta` gateway: the other gateways of your
 application keep their behaviour.
 
-On the PaymentRequest path, what cannot be tied to a payment - no encrypted payload (no `Data` string), not authenticated, a
-genuine notification sent over GET, matching no payment of the method, or a payment method whose
-configuration is incomplete - gets a **404** on purpose, before any response provider is
-consulted: Sylius' notification contract leaves no other way out. The bank only retries what it sent
-itself, and those retries recover a genuine notification once its cause is fixed. See
-[protocol.md](protocol.md).
+On the PaymentRequest path, what cannot be tied to a payment - no encrypted payload (no `Data`
+string), not authenticated, a genuine notification sent over GET, matching no payment of the method,
+or a payment method whose configuration is incomplete - gets a **404** on purpose, before any
+response provider is consulted: Sylius' notification contract leaves no other way out. The bank only
+retries what it sent itself, and those retries recover a genuine notification once its cause is
+fixed. See [protocol.md](protocol.md).
 
 ## Switching from one path to the other
 

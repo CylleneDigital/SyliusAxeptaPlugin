@@ -36,7 +36,7 @@ their tab after paying; the order must turn paid all the same.
 | `MAC` | HMAC-SHA256, hexadecimal output |
 
 Blowfish-ECB and HMAC-SHA256 are what the documentation prescribes **[doc]**. The key repetition and
-the padding are those the bank's messages decipher with **[observed]**.
+the null-byte padding are those the bank accepts on our requests **[observed]**.
 
 What the bank sends back is padded with spaces rather than null bytes **[observed]**: the plugin
 strips both on decryption. See the discrepancies at the end of this page.
@@ -154,7 +154,7 @@ What a card notification actually carries **[observed]**, on every notification 
 - inside the decrypted payload: `mid` and `refnr` (in lowercase), `PayID`, `XID`, `TransID`, `Type`,
   `CardHolder`, `maskedpan`, `card`, `PCNr`, `CCExpiry`, `CCBrand`, `Code`, `Status`, `Description`
   and `MAC`;
-- **no amount and no currency**. Neither is covered by the response signature either: what ties the
+- **no amount and no currency**. Neither is covered by the response signature: what ties the
   notification to the right payment is the `TransID`.
 
 The plugin therefore only reads the decrypted payload **[design]**: clear parameters next to a `Data`
@@ -275,7 +275,7 @@ The documentation explicitly asks to:
 - **not rely on their order**;
 - **ignore gracefully** unknown parameters, new ones being liable to appear without notice.
 
-The plugin does all three. It is not a formality: `mid` and `refnr` come back in lowercase
+The plugin does all three **[design]**. It is not a formality: `mid` and `refnr` come back in lowercase
 **[observed]**.
 
 ## Three discrepancies found in real conditions **[observed]**

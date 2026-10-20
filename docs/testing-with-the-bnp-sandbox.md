@@ -149,8 +149,8 @@ checkout, and the run only means something if you know which one you are exercis
 
 1. Place an order through to payment, pick Axepta.
 2. Check the redirect to `paymentpage.axepta.bnpparibas`.
-3. Pay with `4000019966199434` on the demonstration account (see the cards section for why), or with
-   a card from the authorisation table on a dedicated MID - `4111 1111 1111 1111`, say.
+3. Pay with `4000019966199434` on the demonstration account, or with a card from the authorisation
+   table on a dedicated MID - `4111 1111 1111 1111`, say.
 4. Check: payment `completed`, order `paid`.
 
 The refusal case expects the same sequence, with a card whose verdict is a failure. The bank sends
@@ -267,5 +267,7 @@ when the two contradict each other.
 ## After the campaign
 
 If the keys used may have leaked - a commit, a screenshot, a chat channel - ask BNP for a rotation.
-Mind the payments in flight: a notification signed with the old key arriving after the rotation is
-rejected with a `20100044` or `20120044` code, which the plugin logs with a dedicated message.
+Mind the payments in flight: a notification signed with the old key arriving after the rotation
+fails the signature check and is logged as a `warning` with the `invalid_signature` reason. A
+request signed with the old key is refused by BNP with a `20100044` or `20120044` code, which the
+plugin logs with a dedicated message.
