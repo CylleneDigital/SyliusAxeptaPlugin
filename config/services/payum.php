@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Symfony\Component\DependencyInjection\Loader\Configurator;
 
+use CylleneDigital\SyliusAxeptaPlugin\Axepta\Protocol\TransactionIdGeneratorInterface;
 use CylleneDigital\SyliusAxeptaPlugin\Payum\Action\CaptureAction;
 use CylleneDigital\SyliusAxeptaPlugin\Payum\Action\ConvertPaymentAction;
 use CylleneDigital\SyliusAxeptaPlugin\Payum\Action\NotifyAction;
@@ -42,6 +43,7 @@ return static function (ContainerConfigurator $container): void {
             service('request_stack'),
             service(StateMachineInterface::class),
             service('cyllene_digital_sylius_axepta.protocol.notification_verifier'),
+            service(TransactionIdGeneratorInterface::class),
             service('logger'),
         ])
         ->tag('payum.action', ['factory' => 'axepta', 'alias' => 'cyllene_digital_sylius_axepta.notify'])
