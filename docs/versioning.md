@@ -17,6 +17,10 @@ A break in any of the following requires a major version.
 | `CredentialsProvider` | The single entry point both payment paths go through |
 | The `axepta_fields` hookable and the template paths | What an integrator hooks onto to replace a rendering |
 
+The exceptions the protocol layer throws implement `AxeptaException`. A minor version may add
+exception classes, or narrow a thrown type to a subclass of the former one, never widen it. Errors
+raised by PHP itself - a failing entropy source, a type error - are outside that promise.
+
 ### Substituting a generator carries an obligation
 
 `TransactionIdGeneratorInterface` declares two methods, and both are part of the contract.
