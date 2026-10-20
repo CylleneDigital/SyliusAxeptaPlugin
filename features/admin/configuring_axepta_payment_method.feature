@@ -26,9 +26,9 @@ Feature: Configuring an Axepta payment method
         And I try to add it
         Then I should be notified that the merchant id is required
 
-    # The costliest regression risk: without `always_empty => false` on the key fields, a plain
-    # save would replace them with empty strings, and payments would then fail with no visible
-    # error - the signature being computed with an empty key.
+    # The costliest regression risk: the key fields are never redisplayed, so without the form
+    # listener keeping the stored keys, a plain save would replace them with empty strings, and
+    # payments would then fail with no visible error - the signature being computed with an empty key.
     @ui
     Scenario: Editing an Axepta payment method without losing its keys
         Given the store has a payment method "Axepta" with a code "axepta" and Axepta gateway

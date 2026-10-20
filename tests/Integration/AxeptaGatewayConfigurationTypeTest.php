@@ -43,23 +43,43 @@ final class AxeptaGatewayConfigurationTypeTest extends KernelTestCase
     #[DataProvider('secretFields')]
     public function testSecretsAreNeverRenderedInClearText(string $field): void
     {
-        $config = $this->form()->get($field)->getConfig();
+        $form = $this->form([
+            'merchant_id' => 'BNP_TEST_MERCHANT',
+            'hmac_key' => 's3cr3t-hmac-key-for-axepta-tests',
+            'blowfish_key' => 'aB3dEf9hJk2mNp5q',
+        ]);
 
-        self::assertInstanceOf(PasswordType::class, $config->getType()->getInnerType());
-        self::assertFalse($config->getOption('always_empty'), \sprintf(
-            'Field "%s" must keep what was typed when validation fails.',
+        self::assertInstanceOf(PasswordType::class, $form->get($field)->getConfig()->getType()->getInnerType());
+
+        // Keys left blank, another field failing validation: the form is rendered again, with the
+        // stored keys put back into its data by the listener.
+        $form->submit(['merchant_id' => '', 'hmac_key' => '', 'blowfish_key' => '']);
+
+        self::assertFalse($form->isValid());
+        self::assertSame('', $form->createView()[$field]->vars['value'], \sprintf(
+            'Field "%s" renders a stored key in the page.',
             $field,
         ));
+    }
+
+    /** A key just typed is not rendered back either when the submission fails. */
+    #[DataProvider('secretFields')]
+    public function testATypedSecretIsNotRenderedBackWhenValidationFails(string $field): void
+    {
+        $form = $this->form();
+        $form->submit(['merchant_id' => '', 'hmac_key' => 'typed-hmac-key', 'blowfish_key' => 'typedBlowfish16b']);
+
+        self::assertFalse($form->isValid());
+        self::assertSame('', $form->createView()[$field]->vars['value']);
     }
 
     /**
      * Regression risk number one when migrating.
      *
-     * `PasswordType` never redisplays its value when the form opens, and `always_empty => false`
-     * changes nothing - it only applies to submitted forms. Both key fields therefore arrive blank
-     * when editing an existing method, and without protection a plain "Save" would replace them
-     * with empty strings. Payments would then fail with no visible error, the signature being
-     * computed with an empty key.
+     * `PasswordType` never redisplays its value. Both key fields therefore arrive blank when
+     * editing an existing method, and without protection a plain "Save" would replace them with
+     * empty strings. Payments would then fail with no visible error, the signature being computed
+     * with an empty key.
      */
     #[DataProvider('secretFields')]
     public function testAnEmptySubmissionDoesNotWipeAnExistingSecret(string $field): void
@@ -169,6 +189,10 @@ final class AxeptaGatewayConfigurationTypeTest extends KernelTestCase
         $formFactory = self::getContainer()->get('form.factory');
         \assert($formFactory instanceof FormFactoryInterface);
 
-        return $formFactory->create(AxeptaGatewayConfigurationType::class, $data, ['validation_groups' => ['sylius']]);
+        // No request, hence no session to hold a CSRF token: rendering the view would fail.
+        return $formFactory->create(AxeptaGatewayConfigurationType::class, $data, [
+            'validation_groups' => ['sylius'],
+            'csrf_protection' => false,
+        ]);
     }
 }

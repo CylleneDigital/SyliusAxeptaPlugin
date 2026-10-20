@@ -10,9 +10,9 @@ use Sylius\Behat\Page\Admin\PaymentMethod\UpdatePage;
  * Axepta configuration fields on the edit form.
  *
  * {@see self::hasKeyKept()} guards the costliest regression risk of the plugin: the keys are
- * rendered as `PasswordType`, and without `always_empty => false` they would come back blank. A
- * plain save would then replace them with empty strings, and payments would fail with no visible
- * error afterwards - the signature being computed with an empty key.
+ * rendered as `PasswordType`, which never redisplays them, and without the form listener keeping
+ * the stored values a plain save would replace them with empty strings. Payments would fail with no
+ * visible error afterwards - the signature being computed with an empty key.
  */
 final class AxeptaUpdatePage extends UpdatePage implements AxeptaUpdatePageInterface
 {
