@@ -75,15 +75,10 @@ jobs:
                       php: "8.3"
 
                 include:
-                    # The Sylius migrations skip themselves on MariaDB under DBAL 4, where
-                    # `MariaDBPlatform` no longer extends `MySQLPlatform`, and leave the database
-                    # empty. The plugin has neither entity nor migration: building the schema from
-                    # the mappings loses nothing here.
                     - php: "8.4"
                       symfony: "^7.4"
                       sylius: "~2.3.0"
                       database: "mariadb:11.4"
-                      database_setup: "schema"
                       node: "22.x"
                     - php: "8.4"
                       symfony: "^7.4"
@@ -122,7 +117,6 @@ jobs:
                     cache_key: "${{ runner.os }}-php-${{ matrix.php }}-composer-${{ hashFiles('**/composer.json') }}"
                     cache_restore_key: "${{ runner.os }}-php-${{ matrix.php }}-composer-"
                     database: "${{ matrix.database }}"
-                    database_setup: "${{ matrix.database_setup || 'migrations' }}"
                     # Empty on Sylius 2.1: the action then skips its own JS build, done below.
                     node_version: "${{ matrix.sylius != '~2.1.0' && matrix.node || '' }}"
                     php_version: "${{ matrix.php }}"
