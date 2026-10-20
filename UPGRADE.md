@@ -6,6 +6,16 @@ plugin.
 A payment plugin is upgraded in production, on a site that takes money: every compatibility break
 must be written here before it is released, together with the exact manoeuvre to carry out.
 
+## From 1.1.x to 1.2
+
+Nothing to change in the project.
+
+Every exception the protocol layer throws now implements `AxeptaException`, as its docblock already
+promised: the Blowfish cipher throws `InvalidCipherInputException`, the payment page request builder
+`UnusablePaymentPageUrlException`. Both extend `\InvalidArgumentException`, the type thrown before,
+so an existing `catch` keeps working. A `catch (AxeptaException)` now also catches a return URL
+refused for carrying an `&`.
+
 ## From 1.1.x to 1.1.2
 
 Nothing to change in a project that only configures the plugin through the back office and the

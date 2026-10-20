@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace CylleneDigital\SyliusAxeptaPlugin\Axepta\Crypto;
 
+use CylleneDigital\SyliusAxeptaPlugin\Axepta\Exception\InvalidCipherInputException;
+
 /**
  * Blowfish-ECB in pure PHP, following the Axepta BNP Paribas conventions.
  *
@@ -36,7 +38,7 @@ final class BlowfishEcb implements BlowfishEcbInterface
     public function __construct(#[\SensitiveParameter] string $key)
     {
         if ('' === $key) {
-            throw new \InvalidArgumentException('The Blowfish key cannot be empty.');
+            throw InvalidCipherInputException::emptyKey();
         }
 
         $length = mb_strlen($key, '8bit');
@@ -84,7 +86,7 @@ final class BlowfishEcb implements BlowfishEcbInterface
     private function unpackBlock(string $block): array
     {
         if (8 !== mb_strlen($block, '8bit')) {
-            throw new \InvalidArgumentException('Invalid Blowfish block, 8 bytes expected.');
+            throw InvalidCipherInputException::invalidBlockSize();
         }
         $words = unpack('N2', $block);
         \assert(false !== $words);

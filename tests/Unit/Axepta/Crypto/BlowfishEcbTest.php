@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\CylleneDigital\SyliusAxeptaPlugin\Unit\Axepta\Crypto;
 
 use CylleneDigital\SyliusAxeptaPlugin\Axepta\Crypto\BlowfishEcb;
+use CylleneDigital\SyliusAxeptaPlugin\Axepta\Exception\InvalidCipherInputException;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -91,14 +92,14 @@ final class BlowfishEcbTest extends TestCase
 
     public function testEmptyKeyIsRejected(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidCipherInputException::class);
 
         new BlowfishEcb('');
     }
 
     public function testTruncatedCiphertextIsRejected(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidCipherInputException::class);
 
         (new BlowfishEcb(self::KEY))->decrypt('1234567');
     }
