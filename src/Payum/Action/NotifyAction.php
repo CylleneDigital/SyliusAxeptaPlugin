@@ -39,6 +39,8 @@ use Symfony\Component\HttpFoundation\RequestStack;
  */
 final class NotifyAction implements ActionInterface, ApiAwareInterface
 {
+    private const PAID_WITHOUT_ORDER = 'Axepta payment notified as paid on a payment that can no longer complete: the bank has taken the money but this payment does not settle the order. Reconcile with the BNP back office, a double charge is possible.';
+
     private AxeptaCredentials $credentials;
 
     public function __construct(
@@ -178,11 +180,25 @@ final class NotifyAction implements ActionInterface, ApiAwareInterface
         }
 
         if (!$this->stateMachine->can($payment, PaymentTransitions::GRAPH, $transition)) {
-            $this->logger->info('Axepta notification with no effect: the transition no longer applies.', [
+            $context = [
                 'payment_id' => $payment->getId(),
                 'payment_state' => $payment->getState(),
                 'transition' => $transition,
-            ]);
+                'status' => $notification->status?->value,
+                'code' => $notification->code(),
+                'xid' => $notification->xid(),
+                'pay_id' => $notification->payId(),
+            ];
+
+            // A payment the bank has taken but that can no longer complete - failed, cancelled -
+            // leaves money without an order paid: that one must reach an operator. A replay on a
+            // payment already completed, or refunded since, is the nominal double notification.
+            if (PaymentTransitions::TRANSITION_COMPLETE === $transition &&
+                !\in_array($payment->getState(), [PaymentInterface::STATE_COMPLETED, PaymentInterface::STATE_REFUNDED], true)) {
+                $this->logger->error(self::PAID_WITHOUT_ORDER, $context);
+            } else {
+                $this->logger->info('Axepta notification with no effect: the transition no longer applies.', $context);
+            }
 
             return;
         }

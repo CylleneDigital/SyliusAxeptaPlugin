@@ -11,6 +11,7 @@ use Psr\Log\LoggerInterface;
 use Sylius\Abstraction\StateMachine\StateMachineInterface;
 use Sylius\Bundle\PaymentBundle\Provider\PaymentRequestProviderInterface;
 use Sylius\Bundle\PayumBundle\PaymentRequest\Resolver\DoctrineProxyObjectResolverInterface;
+use Sylius\Component\Payment\Model\PaymentInterface;
 use Sylius\Component\Payment\Model\PaymentRequestInterface;
 use Sylius\Component\Payment\PaymentRequestTransitions;
 use Sylius\Component\Payment\PaymentTransitions;
@@ -31,6 +32,8 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 #[AsMessageHandler(bus: 'sylius.payment_request.command_bus')]
 final readonly class NotifyAxeptaPaymentRequestHandler
 {
+    private const PAID_WITHOUT_ORDER = 'Axepta payment notified as paid on a payment that can no longer complete: the bank has taken the money but this payment does not settle the order. Reconcile with the BNP back office, a double charge is possible.';
+
     public function __construct(
         private PaymentRequestProviderInterface $paymentRequestProvider,
         private CredentialsProvider $credentialsProvider,
@@ -131,20 +134,31 @@ final readonly class NotifyAxeptaPaymentRequestHandler
             $this->stateMachine->apply($payment, PaymentTransitions::GRAPH, $transition);
         }
 
-        $this->logger->info(
-            $applicable
-                ? 'Axepta notification applied.'
-                : 'Axepta notification with no effect: the transition no longer applies.',
-            [
-                'payment_request_hash' => (string) $paymentRequest->getHash(),
-                'payment_id' => $payment->getId(),
-                'payment_state' => $payment->getState(),
-                'transition' => $transition,
-                'status' => $notification->status->value,
-                'code' => $notification->code(),
-                'xid' => $notification->xid(),
-            ],
-        );
+        $context = [
+            'payment_request_hash' => (string) $paymentRequest->getHash(),
+            'payment_id' => $payment->getId(),
+            'payment_state' => $payment->getState(),
+            'transition' => $transition,
+            'status' => $notification->status->value,
+            'code' => $notification->code(),
+            'xid' => $notification->xid(),
+            'pay_id' => $notification->payId(),
+        ];
+
+        // A payment the bank has taken but that can no longer complete - failed, cancelled - leaves
+        // money without an order paid: that one must reach an operator. A replay on a payment
+        // already completed, or refunded since, is the nominal double notification.
+        if (!$applicable && PaymentTransitions::TRANSITION_COMPLETE === $transition &&
+            !\in_array($payment->getState(), [PaymentInterface::STATE_COMPLETED, PaymentInterface::STATE_REFUNDED], true)) {
+            $this->logger->error(self::PAID_WITHOUT_ORDER, $context);
+        } else {
+            $this->logger->info(
+                $applicable
+                    ? 'Axepta notification applied.'
+                    : 'Axepta notification with no effect: the transition no longer applies.',
+                $context,
+            );
+        }
 
         // The request is handled whether the payment settled or not: `failed` here would mean
         // "unprocessable message", not "refused payment".

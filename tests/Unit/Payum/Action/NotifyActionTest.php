@@ -11,6 +11,7 @@ use CylleneDigital\SyliusAxeptaPlugin\Payum\Action\NotifyAction;
 use Payum\Core\Request\Notify;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\AbstractLogger;
 use Psr\Log\NullLogger;
 use Sylius\Abstraction\StateMachine\StateMachineInterface;
 use Sylius\Component\Core\Model\Payment;
@@ -120,6 +121,48 @@ final class NotifyActionTest extends TestCase
 
         $this->action($this->notifiedWith($latestAttempt), $stateMachine)
             ->execute($this->notify($this->payment('550e8400-e29b-41d4-a716-446655440000'), $latestAttempt));
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function paymentsThatCanNoLongerComplete(): iterable
+    {
+        yield 'failed' => [PaymentInterface::STATE_FAILED, 'error'];
+        yield 'cancelled' => [PaymentInterface::STATE_CANCELLED, 'error'];
+        // The nominal double notification, and a replay after a refund: nothing to report.
+        yield 'completed' => [PaymentInterface::STATE_COMPLETED, 'info'];
+        yield 'refunded' => [PaymentInterface::STATE_REFUNDED, 'info'];
+    }
+
+    /**
+     * Money taken that settles no order must stand out from the replays the bank sends anyway.
+     */
+    #[DataProvider('paymentsThatCanNoLongerComplete')]
+    public function testAPaidNotificationThatCanNoLongerApplyIsLoggedByItsConsequence(string $state, string $expectedLevel): void
+    {
+        $stateMachine = $this->createMock(StateMachineInterface::class);
+        $stateMachine->method('can')->willReturn(false);
+        $stateMachine->expects(self::never())->method('apply');
+
+        $logger = new class() extends AbstractLogger {
+            /** @var list<string> */
+            public array $levels = [];
+
+            public function log($level, \Stringable|string $message, array $context = []): void
+            {
+                $this->levels[] = \is_string($level) ? $level : 'unexpected';
+            }
+        };
+
+        $payment = $this->payment(1);
+        $payment->setState($state);
+
+        $action = new NotifyAction($this->notifiedWith(self::LATEST_ATTEMPT), $stateMachine, new NotificationVerifier(), new PrefixedTransactionIdGenerator(), $logger);
+        $action->setApi($this->credentials());
+        $action->execute($this->notify($payment, self::LATEST_ATTEMPT));
+
+        self::assertSame([$expectedLevel], $logger->levels);
     }
 
     public function testANotificationWhoseTransactionIdDesignatesNoPaymentIsIgnored(): void

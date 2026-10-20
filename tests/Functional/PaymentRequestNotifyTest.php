@@ -96,6 +96,30 @@ final class PaymentRequestNotifyTest extends WebTestCase
     }
 
     /**
+     * A paid notification reaching a payment that can no longer complete - failed by an earlier
+     * notification here - means the bank has taken money that settles no order: unlike a replay on
+     * a completed payment, it must stand out as an error.
+     */
+    public function testAPaidNotificationOnAFailedPaymentIsLoggedAsAnError(): void
+    {
+        $this->client->disableReboot();
+
+        [$paymentMethod, $payment, $forger, $transactionId] = $this->pendingCapture('paidonfailed');
+
+        $this->notify($paymentMethod, $forger->forge($transactionId, 'FAILED', '22720040'));
+        self::assertSame(PaymentInterface::STATE_FAILED, $this->stateOf($payment));
+
+        $this->notify($paymentMethod, $forger->forge($transactionId));
+
+        self::assertSame(Response::HTTP_OK, $this->client->getResponse()->getStatusCode());
+        self::assertSame(PaymentInterface::STATE_FAILED, $this->stateOf($payment));
+        $this->assertLogged(
+            Level::Error,
+            'Axepta payment notified as paid on a payment that can no longer complete: the bank has taken the money but this payment does not settle the order. Reconcile with the BNP back office, a double charge is possible.',
+        );
+    }
+
+    /**
      * The status enum is not exhaustive from the platform's point of view, and it may introduce
      * values without notice. Treating the unknown as a failure would mark as refused a payment that
      * may have been taken - the more destructive of the two possible behaviours.
