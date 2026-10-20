@@ -7,6 +7,7 @@
 - [ ] Tests pass (`vendor/bin/phpunit`, `vendor/bin/behat --strict`)
 - [ ] PHPStan and ECS are green
 - [ ] `UPGRADE.md` is up to date if the public contract changes
+- [ ] A decision taken or reversed has its record in `docs/adr/`
 - [ ] No real key, signature or merchant identifier appears in the code, the tests or this
       description
 

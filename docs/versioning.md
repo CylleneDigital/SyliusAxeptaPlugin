@@ -6,20 +6,24 @@ a guarantee.
 
 ## Public API
 
-A break in any of the following requires a major version.
+A break in any of the following requires a major version. The one exception is closing a security
+leak, documented as such in [UPGRADE.md](../UPGRADE.md).
 
 | | |
 |---|---|
 | The classes of `src/Axepta/` | The protocol layer, usable on its own, without Sylius or Payum |
 | `AxeptaGatewayFactory` and the `axepta` factory name | The name is stored in `sylius_gateway_config.factory_name`; renaming it would require a data migration |
 | The configuration keys | `merchant_id`, `hmac_key`, `blowfish_key`, `test_mode`, `language` - stored as such in `sylius_gateway_config.config` |
+| The bundle settings | `payment_page_url`, `logger_channel` - set in the application's `cyllene_digital_sylius_axepta` configuration |
 | The substitution points | `BlowfishEcbFactoryInterface`, `BlowfishEcbInterface`, `TransactionIdGeneratorInterface`, `ReferenceProviderInterface` |
 | `CredentialsProvider` | The single entry point both payment paths go through |
+| `AxeptaGatewayConfigurationType` | What a form type extension targets to add a field to the gateway configuration |
 | The `axepta_fields` hookable and the template paths | What an integrator hooks onto to replace a rendering |
 
 The exceptions the protocol layer throws implement `AxeptaException`. A minor version may add
 exception classes, or narrow a thrown type to a subclass of the former one, never widen it. Errors
-raised by PHP itself - a failing entropy source, a type error - are outside that promise.
+raised by PHP itself - a failing entropy source, a type error - and whatever a substituted
+implementation of a protocol interface throws are outside that promise.
 
 ### Substituting a generator carries an obligation
 

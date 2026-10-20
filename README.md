@@ -114,6 +114,7 @@ Every setting, the key rotation procedure and its pitfall:
 | [The protocol](docs/protocol.md) | What the plugin sends and accepts, telling what BNP guarantees from what was merely observed |
 | [Acceptance testing](docs/testing-with-the-bnp-sandbox.md) | The runbook against the real platform, to walk through before every major version |
 | [Versioning and support](docs/versioning.md) | Public API, internals, support policy |
+| [Decision records](docs/adr/README.md) | Why the plugin is built the way it is, one decision per file |
 
 Sylius 2 offers two payment mechanisms and the plugin implements both; the choice is made per
 payment method through `usePayum`. **Standard checkout, take Payum. API or headless, take

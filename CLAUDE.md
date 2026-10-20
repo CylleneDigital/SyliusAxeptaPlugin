@@ -58,7 +58,8 @@ The test application imports Sylius' Behat services, among which a `DummyNotifyP
 whose `supports()` answers true to everything and which returns **the oldest payment in the
 database**. Symptom if the priority (`10`) goes: a 2xx response, a `completed` notification request,
 but on the wrong payment - and only the first payment in the database appears to work. A host
-provider meant to handle some Axepta notifications likewise needs a priority above `10`.
+provider meant to handle some Axepta notifications likewise needs a priority above `10`
+([0021](docs/adr/0021-changes-only-its-own-gateway.md)).
 
 ## Test database
 
@@ -76,48 +77,65 @@ APP_ENV=test vendor/bin/console sylius:payment:generate-key
 
 ## Invariants not to break
 
+Each rule is here in full, with the names the code uses; its reasons are in the decision record it
+links ([`docs/adr/`](docs/adr/README.md)). Read the record before changing a rule, and write a new
+record rather than editing an accepted one - the records hold no path nor figure, this file does.
+
 - **`BlowfishEcb` stays pure PHP.** `openssl_encrypt('BF-ECB')` returns `false` under OpenSSL 3 -
   Blowfish sits in the legacy provider, disabled by default. Never "simplify" by wiring OpenSSL back
   in. This is cryptographic code validated against legacy OpenSSL `BF-ECB` output and the standard
-  Blowfish vector; BNP's five official vectors only cover the HMAC signature.
+  Blowfish vector; BNP's five official vectors only cover the HMAC signature
+  ([0007](docs/adr/0007-blowfish-pure-php-substitutable.md)).
 - **A handled notification answers 2xx** - `204` from PayumBundle on Payum, `200` from the
   decorated `NotifyResponseProviderInterface` on PaymentRequest. A 404 or a 500 triggers 8 BNP
   retries over ~21 h 36. Hence the catching of exceptions in `NotifyAction` and
   `NotifyAxeptaPaymentRequestHandler`; a double notification is the nominal case. Deliberate
   exception: `AxeptaNotifyPaymentProvider` answers 404 to what it cannot tie to a payment - see
-  [`docs/protocol.md`](docs/protocol.md).
+  [`docs/protocol.md`](docs/protocol.md)
+  ([0012](docs/adr/0012-notification-answers-2xx-deliberate-404.md),
+  [0013](docs/adr/0013-double-notification-no-op.md)).
 - **The payload goes out in ISO-8859-1**, and `Len` counts the converted bytes. Handled badly, this
-  only breaks a fraction of orders - those whose description carries an accent.
+  only breaks a fraction of orders - those whose description carries an accent
+  ([0008](docs/adr/0008-unrepresentable-characters-replaced.md)).
 - **Both payment paths are in scope** from v1. Sylius 2 routes according to
   `GatewayConfig::usePayum`. The classes of the `PaymentRequest` adapter carry `@experimental`, like
-  the matching Sylius foundation.
+  the matching Sylius foundation ([0019](docs/adr/0019-both-payment-paths-shared-core.md)).
 - **The key fields keep `always_empty` at its default, `true`.** The `PRE_SUBMIT` listener of
   `AxeptaGatewayConfigurationType` puts the stored keys back when they come back empty - that is what
-  stops a plain save from wiping them. With `false`, a submission failing validation would render
-  those stored keys in the page.
+  lets a plain save pass their `NotBlank` without retyping them. With `false`, a submission failing
+  validation would render those stored keys in the page
+  ([0026](docs/adr/0026-keys-never-redisplayed-one-pair.md)).
 - **Service definitions stay in PHP.** Symfony 8 no longer loads XML service definitions, and Behat 4
   (the one Symfony 8 requires) neither YAML configuration nor step annotations: services in
   `config/services/*.php`, Behat in `behat.dist.php`, steps as `#[Given]` attributes. Routes and twig
-  hooks stay in YAML (`config/routes/`, `config/twig_hooks/`).
+  hooks stay in YAML (`config/routes/`, `config/twig_hooks/`)
+  ([0033](docs/adr/0033-service-definitions-in-php.md)).
 - **Sylius 2.1 to 2.3 with one code base.** Where Sylius changed a signature, widen the parameter
   rather than branch on the version - `AxeptaHttpResponseProvider` takes `object $request` because
-  2.1 / 2.2 pass a `RequestConfiguration` and 2.3 a `Request`.
+  2.1 / 2.2 pass a `RequestConfiguration` and 2.3 a `Request`
+  ([0032](docs/adr/0032-one-code-base-sylius-2-1-to-2-3.md)).
 - **New configuration keys must tolerate their own absence**: a gateway configuration written by an
-  earlier version does not carry them.
-- The public contract - protocol classes, substitutable interfaces, hookable names, gateway
-  configuration keys - only breaks in a major version. The plugin defines no public service tag.
+  earlier version does not carry them ([0029](docs/adr/0029-configuration-keys-tolerate-absence.md)).
+- The public contract only breaks in a major version, except to close a security leak documented
+  as such in `UPGRADE.md`: the classes of `src/Axepta/`, `AxeptaGatewayFactory` and its `axepta`
+  name, the gateway configuration keys, the bundle settings `payment_page_url` and `logger_channel`,
+  the substitution interfaces, `CredentialsProvider`, `AxeptaGatewayConfigurationType`, the
+  `axepta_fields` hookable and the template paths. The classes marked `@internal` may change in a
+  minor version, and the plugin defines no public service tag
+  ([0031](docs/adr/0031-explicit-public-contract.md)).
 
 ## The protocol is not written from memory
 
 `PaymentPageRequestBuilder` and `NotificationVerifier` are written **from BNP's public
 specification** (<https://docs.axepta.bnpparibas>). Any protocol change must rest on a page of that
 documentation, an official test vector, or behaviour observed in real conditions - never on another
-implementation nor on an assumption.
+implementation nor on an assumption ([0005](docs/adr/0005-protocol-rules-rest-on-evidence.md)).
 
 The plugin targets **Axepta Online 1.0**, the generation with `.aspx` endpoints. Generation 2.0 is a
-separate REST API, out of scope.
+separate REST API, out of scope ([0001](docs/adr/0001-target-axepta-online-1-0.md)).
 
 ## What does not belong here
 
 Business logic specific to one shop - payment policies, deposits, checkout rules - stays in the
-project using it. This plugin only carries the Axepta protocol and its wiring into Sylius.
+project using it. This plugin only carries the Axepta protocol and its wiring into Sylius
+([0004](docs/adr/0004-no-data-no-shop-policy.md)).
