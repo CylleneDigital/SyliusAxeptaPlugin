@@ -9,6 +9,8 @@ use CylleneDigital\SyliusAxeptaPlugin\Axepta\Exception\InvalidCredentialsExcepti
 use CylleneDigital\SyliusAxeptaPlugin\Axepta\Protocol\AxeptaCredentials;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\VarDumper\Cloner\VarCloner;
+use Symfony\Component\VarDumper\Dumper\CliDumper;
 
 final class AxeptaCredentialsTest extends TestCase
 {
@@ -17,6 +19,33 @@ final class AxeptaCredentialsTest extends TestCase
         $credentials = new AxeptaCredentials('BNP_TEST_MERCHANT', 'hmac', 'blowfish');
 
         self::assertSame(AxeptaCredentials::DEFAULT_PAYMENT_PAGE_URL, $credentials->paymentPageUrl);
+    }
+
+    /**
+     * Private properties are not enough: `dump()`, `var_dump()` and `print_r()` print them. Each
+     * of the usual ways to display an object must leave the keys out.
+     */
+    public function testTheKeysAppearInNoRepresentationOfTheObject(): void
+    {
+        $credentials = new AxeptaCredentials('BNP_TEST_MERCHANT', 'HMAC-KEY-SHOWN', 'BLOWFISH-SHOWN');
+
+        $representations = [
+            'dump' => (new CliDumper())->dump((new VarCloner())->cloneVar($credentials), true),
+            'print_r' => print_r($credentials, true),
+            'var_export' => var_export($credentials, true),
+            'array cast' => print_r((array) $credentials, true),
+        ];
+
+        foreach ($representations as $name => $representation) {
+            self::assertStringNotContainsString('SHOWN', (string) $representation, \sprintf('A key appears through %s.', $name));
+        }
+    }
+
+    public function testTheCredentialsCannotBeSerialised(): void
+    {
+        $this->expectException(\Exception::class);
+
+        serialize(new AxeptaCredentials('BNP_TEST_MERCHANT', 'hmac', 'blowfish'));
     }
 
     /**

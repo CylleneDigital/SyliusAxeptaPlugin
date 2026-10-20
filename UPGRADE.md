@@ -8,7 +8,13 @@ must be written here before it is released, together with the exact manoeuvre to
 
 ## From 1.1 to 1.1.2
 
-Nothing to change in a project that only configures the plugin.
+Nothing to change in a project that only configures the plugin through the back office and the
+bundle configuration.
+
+A `payment_page_url` stored in a gateway configuration is now ignored: the payment page URL comes
+from the bundle setting `cyllene_digital_sylius_axepta.payment_page_url` only. The back office never
+wrote that key; a project that set it by hand in the database must move the value to the bundle
+configuration.
 
 A project that registered its own notify payment provider for Axepta payment methods - to handle
 GET notifications of alternative payment means, for instance - must give it a priority above 10:

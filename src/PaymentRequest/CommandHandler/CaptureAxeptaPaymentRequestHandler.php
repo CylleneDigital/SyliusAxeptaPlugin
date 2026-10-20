@@ -114,7 +114,7 @@ final readonly class CaptureAxeptaPaymentRequestHandler
     /**
      * @return array{test_mode: bool, language: string|null}
      */
-    private function settings(?GatewayConfigInterface $gatewayConfig): array
+    private function settings(#[\SensitiveParameter] ?GatewayConfigInterface $gatewayConfig): array
     {
         $config = $gatewayConfig?->getConfig() ?? [];
         $language = $config['language'] ?? null;

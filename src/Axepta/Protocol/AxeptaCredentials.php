@@ -13,9 +13,11 @@ use CylleneDigital\SyliusAxeptaPlugin\Axepta\Exception\InvalidCredentialsExcepti
 /**
  * Merchant identifier and keys of an Axepta gateway.
  *
- * Immutable, and deliberately without `__toString()` or `__debugInfo()`: the keys must appear
- * neither in a `dump()`, nor in an exception message, nor in a log. They are marked
- * `#[\SensitiveParameter]` so that PHP masks them in exception traces.
+ * The keys must appear neither in a dump, nor in an exception message, nor in a log. Private
+ * properties do not achieve that: `dump()`, `var_dump()` and `print_r()` print them. The keys are
+ * therefore held in `\SensitiveParameterValue`, which PHP itself never displays and refuses to
+ * serialise, and the constructor marks them `#[\SensitiveParameter]` so that exception traces mask
+ * them too. No `__debugInfo()`: the class exposes no representation of its own.
  *
  * Validation happens at construction time: an empty field fails here, not in the middle of a
  * payment.
@@ -24,12 +26,16 @@ final readonly class AxeptaCredentials
 {
     public const DEFAULT_PAYMENT_PAGE_URL = 'https://paymentpage.axepta.bnpparibas/payssl.aspx';
 
+    private \SensitiveParameterValue $hmacKey;
+
+    private \SensitiveParameterValue $blowfishKey;
+
     public function __construct(
         public string $merchantId,
         #[\SensitiveParameter]
-        private string $hmacKey,
+        string $hmacKey,
         #[\SensitiveParameter]
-        private string $blowfishKey,
+        string $blowfishKey,
         public string $paymentPageUrl = self::DEFAULT_PAYMENT_PAGE_URL,
         private ?BlowfishEcbFactoryInterface $cipherFactory = null,
     ) {
@@ -45,15 +51,26 @@ final readonly class AxeptaCredentials
         if ('' === $paymentPageUrl) {
             throw InvalidCredentialsException::emptyField('payment_page_url');
         }
+
+        $this->hmacKey = new \SensitiveParameterValue($hmacKey);
+        $this->blowfishKey = new \SensitiveParameterValue($blowfishKey);
     }
 
     public function signer(): HmacSigner
     {
-        return new HmacSigner($this->hmacKey);
+        return new HmacSigner(self::reveal($this->hmacKey));
     }
 
     public function cipher(): BlowfishEcbInterface
     {
-        return ($this->cipherFactory ?? new BlowfishEcbFactory())->create($this->blowfishKey);
+        return ($this->cipherFactory ?? new BlowfishEcbFactory())->create(self::reveal($this->blowfishKey));
+    }
+
+    private static function reveal(#[\SensitiveParameter] \SensitiveParameterValue $key): string
+    {
+        $value = $key->getValue();
+        \assert(\is_string($value));
+
+        return $value;
     }
 }

@@ -38,7 +38,7 @@ final class AxeptaGatewayFactory extends GatewayFactory
         parent::__construct($defaultConfig, $coreGatewayFactory);
     }
 
-    protected function populateConfig(ArrayObject $config): void
+    protected function populateConfig(#[\SensitiveParameter] ArrayObject $config): void
     {
         $config->defaults([
             'payum.factory_name' => self::NAME,
@@ -54,7 +54,7 @@ final class AxeptaGatewayFactory extends GatewayFactory
 
         $credentialsProvider = $this->credentialsProvider;
 
-        $config['payum.api'] = static function (ArrayObject $config) use ($credentialsProvider): AxeptaCredentials {
+        $config['payum.api'] = static function (#[\SensitiveParameter] ArrayObject $config) use ($credentialsProvider): AxeptaCredentials {
             $config->validateNotEmpty(self::REQUIRED_OPTIONS);
 
             /** @var array<string, mixed> $options */
