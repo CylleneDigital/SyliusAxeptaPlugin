@@ -51,10 +51,11 @@ Notification MAC = HMAC-SHA256( PayID * TransID * MerchantID * Status  * Code   
 A missing field becomes an empty string **and the separator stays**. On the way out `PayID` is
 empty, the bank has not assigned it yet: the message therefore starts with `*`.
 
-BNP publishes **five official vectors** **[doc]**; the signature is checked against them. They
-are worth more than any in-house test: they validate the algorithm against a reference we did not
-write. They only cover the HMAC: the Blowfish implementation is checked against the output of
-OpenSSL's legacy `BF-ECB` and the standard Blowfish vector, not against a BNP vector.
+BNP publishes **five official vectors** **[doc]**; the signature is checked against them
+**[design]**. They are worth more than any in-house test: they validate the algorithm against a
+reference we did not write. They only cover the HMAC: the Blowfish implementation is checked against
+the output of OpenSSL's legacy `BF-ECB` and the standard Blowfish vector, not against a BNP vector
+**[design]**.
 
 ## The payment request
 
@@ -71,7 +72,7 @@ OpenSSL's legacy `BF-ECB` and the standard Blowfish vector, not against a BNP ve
 ### ⚠️ The amount goes out twice, in two units **[observed]**
 
 The amount appears **in cents** inside the encrypted payload, as the documentation says, and **in
-euros** on the visible field. That second field appears in no specification, but the payment page
+major units** on the visible field - euros on a euro channel. That second field appears in no specification, but the payment page
 rejects cents at that spot.
 
 This is observed, unspecified behaviour - hence liable to change, and covered by a test.
@@ -261,7 +262,7 @@ What the handling does with that **[design]**:
   bank then notifies with that earlier `TransID`. The plugin therefore accepts the payment of any
   attempt of a payment, and only counts a refusal on the latest one **[design]**.
 - On the PaymentRequest path, Sylius reuses the capture request while it is not final: the payment
-  keeps a single `TransID`.
+  keeps a single `TransID` **[design]**.
 - **After a refused card, the bank sends one `FAILED` notification** and returns the customer to the
   shop. The customer is not offered another try on the same bank page (seen on a dedicated test
   MID); a fresh attempt starts from the order.
@@ -286,7 +287,7 @@ notification revealed them, and each has its regression test.
 |---|---|
 | The signature comes back in **uppercase hexadecimal** | No notification is ever authenticated |
 | The plaintext is padded with **spaces**, not null bytes | The last value of the payload, the signature, drags spaces and never matches |
-| The `MerchantID` is **not returned reliably** in the payload | The signature cannot be recomputed |
+| The merchant identifier is **not returned reliably** under the name the documentation gives - it came back as lowercase `mid` | The signature cannot be recomputed from the received value |
 
 On the third point, the plugin recomputes with the `merchant_id` from **its own** configuration,
 never the received one **[design]**. The documentation suggests the opposite; relying on the

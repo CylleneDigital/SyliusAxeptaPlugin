@@ -90,9 +90,9 @@ failure. Source:
 A **challenge is not a refusal**: it is the authentication screen, a normal step. Do not count these
 cards as payment failures.
 
-⚠️ **On a dedicated test MID, these cards are refused in authorisation** **[observed]**:
-`4000019966199434` came back refused with `22770063` "NOT ALLOWED". They exercise the 3-D Secure
-journey, not the bank's verdict; to take a payment, use the authorisation table.
+⚠️ **On a dedicated test MID, `4000019966199434` came back refused in authorisation**, with
+`22770063` "NOT ALLOWED" **[observed]**. These cards exercise the 3-D Secure journey, not the
+bank's verdict; to take a payment, use the authorisation table.
 
 The page offers eight scenarios, each in a Visa and a Mastercard flavour; the four above are the
 ones a gateway acceptance run needs. Refer to the source for the others.

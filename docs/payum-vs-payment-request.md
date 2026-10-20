@@ -94,8 +94,8 @@ substituting the generator therefore requires supplying its inverse.
 
 ## Answering notifications
 
-The Sylius foundation answers `204 No Content`. This plugin answers **`200 OK`** on its own
-notifications. BNP's documentation only writes that a 404 or a 500 triggers the retries; that a
+On the PaymentRequest path, the Sylius foundation answers `204 No Content`; this plugin answers
+**`200 OK`** to its own notifications there. BNP's documentation only writes that a 404 or a 500 triggers the retries; that a
 `2xx` stops them is observed, on both codes - the Payum path answers `204`, and no retry was seen
 there either. The `200` is kept as the most conventional answer, not because the `204` was seen to
 fail.
@@ -103,7 +103,7 @@ fail.
 The decoration only applies to requests of the `axepta` gateway: the other gateways of your
 application keep their behaviour.
 
-What cannot be tied to a payment - no encrypted payload (no `Data` string), not authenticated, a
+On the PaymentRequest path, what cannot be tied to a payment - no encrypted payload (no `Data` string), not authenticated, a
 genuine notification sent over GET, matching no payment of the method, or a payment method whose
 configuration is incomplete - gets a **404** on purpose, before any response provider is
 consulted: Sylius' notification contract leaves no other way out. The bank only retries what it sent

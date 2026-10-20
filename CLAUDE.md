@@ -80,9 +80,9 @@ APP_ENV=test vendor/bin/console sylius:payment:generate-key
   Blowfish sits in the legacy provider, disabled by default. Never "simplify" by wiring OpenSSL back
   in. This is cryptographic code validated against legacy OpenSSL `BF-ECB` output and the standard
   Blowfish vector; BNP's five official vectors only cover the HMAC signature.
-- **A handled notification answers 2xx.** A 404 or a 500 triggers 8 BNP retries over ~21 h 36
-  (`204` from PayumBundle on Payum, `200` from the decorated `NotifyResponseProviderInterface` on
-  PaymentRequest). Hence the catching of exceptions in `NotifyAction` and
+- **A handled notification answers 2xx** - `204` from PayumBundle on Payum, `200` from the
+  decorated `NotifyResponseProviderInterface` on PaymentRequest. A 404 or a 500 triggers 8 BNP
+  retries over ~21 h 36. Hence the catching of exceptions in `NotifyAction` and
   `NotifyAxeptaPaymentRequestHandler`; a double notification is the nominal case. Deliberate
   exception: `AxeptaNotifyPaymentProvider` answers 404 to what it cannot tie to a payment - see
   [`docs/protocol.md`](docs/protocol.md).
