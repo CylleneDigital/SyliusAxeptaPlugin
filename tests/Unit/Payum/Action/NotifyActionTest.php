@@ -107,16 +107,31 @@ final class NotifyActionTest extends TestCase
      * fields are not even verified - a sender would otherwise choose the code and the transaction
      * identifier reported in the rejection.
      */
-    public function testAPostWithoutPayloadIsRejectedUnverified(): void
+    /**
+     * @param array<string, mixed> $parameters
+     */
+    #[DataProvider('postsWithoutPayload')]
+    public function testAPostWithoutPayloadIsRejectedUnverified(array $parameters): void
     {
         $stateMachine = $this->createMock(StateMachineInterface::class);
         $stateMachine->expects(self::never())->method('apply');
         $logger = $this->recordingLogger();
 
-        $this->action($this->requestWith('POST', ['Code' => '20100044', 'Status' => 'OK']), $stateMachine, $logger)
+        $this->action($this->requestWith('POST', $parameters), $stateMachine, $logger)
             ->execute($this->notify($this->payment(1), self::LATEST_ATTEMPT));
 
         self::assertSame(['warning'], $logger->levels);
+        self::assertSame(['Axepta notification without an encrypted payload: rejected.'], $logger->messages);
+    }
+
+    /**
+     * @return iterable<string, array{array<string, mixed>}>
+     */
+    public static function postsWithoutPayload(): iterable
+    {
+        yield 'no Data' => [['Code' => '20100044', 'Status' => 'OK']];
+        // An array would be dropped by the verifier, which would then read the clear fields.
+        yield 'Data as an array' => [['Data' => ['00'], 'Code' => '20100044', 'Status' => 'OK']];
     }
 
     /**
@@ -256,7 +271,7 @@ final class NotifyActionTest extends TestCase
     }
 
     /**
-     * @param array<string, string> $parameters
+     * @param array<string, mixed> $parameters
      */
     private function requestWith(string $method, array $parameters): RequestStack
     {
@@ -284,7 +299,7 @@ final class NotifyActionTest extends TestCase
     }
 
     /**
-     * @return AbstractLogger&object{levels: list<string>}
+     * @return AbstractLogger&object{levels: list<string>, messages: list<string>}
      */
     private function recordingLogger(): AbstractLogger
     {
@@ -292,9 +307,13 @@ final class NotifyActionTest extends TestCase
             /** @var list<string> */
             public array $levels = [];
 
+            /** @var list<string> */
+            public array $messages = [];
+
             public function log($level, \Stringable|string $message, array $context = []): void
             {
                 $this->levels[] = \is_string($level) ? $level : 'unexpected';
+                $this->messages[] = (string) $message;
             }
         };
     }

@@ -117,11 +117,11 @@ final class NotifyAction implements ActionInterface, ApiAwareInterface
         // Accepted limitation of v1: cards notify over POST. Alternative payment means notify
         // over GET and are not in scope yet - one that does reach this URL may have been paid,
         // which only its signature can tell.
-        $isGetNotification = $httpRequest->isMethod('GET') && $httpRequest->query->has('Data');
+        $isGetNotification = $httpRequest->isMethod('GET') && \is_string($httpRequest->query->all()['Data'] ?? null);
 
-        // The plugin asks for encrypted responses: a message without `Data` is not from the bank,
-        // and its clear fields are not worth verifying.
-        if (!$isGetNotification && (!$httpRequest->isMethod('POST') || !$httpRequest->request->has('Data'))) {
+        // The plugin asks for encrypted responses: a message without a `Data` string is not from
+        // the bank, and its clear fields - chosen by the sender - are not worth verifying.
+        if (!$isGetNotification && (!$httpRequest->isMethod('POST') || !\is_string($httpRequest->request->all()['Data'] ?? null))) {
             $this->logger->warning('Axepta notification without an encrypted payload: rejected.', [
                 'payment_id' => $payment->getId(),
                 'http_method' => $httpRequest->getMethod(),
@@ -177,12 +177,6 @@ final class NotifyAction implements ActionInterface, ApiAwareInterface
 
         $transition = $this->transitionFor($notification);
 
-        if (null === $transition) {
-            $this->logUnknownStatus($payment, $notification);
-
-            return;
-        }
-
         // A refusal only counts for the latest attempt: the customer may have paid on a newer one
         // since, and failing the payment would leave that money without an order paid.
         if (PaymentTransitions::TRANSITION_FAIL === $transition && !$isLatestAttempt) {
@@ -205,6 +199,12 @@ final class NotifyAction implements ActionInterface, ApiAwareInterface
                 'code' => $notification->code(),
                 'pay_id' => $notification->payId(),
             ]);
+
+            return;
+        }
+
+        if (null === $transition) {
+            $this->logUnknownStatus($payment, $notification);
 
             return;
         }

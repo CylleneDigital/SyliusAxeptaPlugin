@@ -236,6 +236,20 @@ final class PaymentRequestNotifyTest extends WebTestCase
         self::assertSame(PaymentInterface::STATE_NEW, $this->stateOf($payment));
     }
 
+    /** A `Data` sent as an array is no payload: the clear fields beside it are not even verified. */
+    public function testAPayloadSentAsAnArrayIsRejectedUnverified(): void
+    {
+        $this->client->disableReboot();
+
+        [$paymentMethod, $payment] = $this->pendingCapture('dataarray');
+
+        $this->client->request('POST', '/payment-methods/' . $paymentMethod->getCode(), ['Data' => ['00'], 'Code' => '20100044']);
+
+        self::assertSame(Response::HTTP_NOT_FOUND, $this->client->getResponse()->getStatusCode());
+        $this->assertLogged(Level::Warning, 'Axepta notification without an encrypted payload: rejected.');
+        self::assertSame(PaymentInterface::STATE_NEW, $this->stateOf($payment));
+    }
+
     /**
      * Keys missing from the gateway configuration used to throw from the credentials, a 500 logged
      * nowhere near Axepta. It is the same 404 as any message that cannot be tied to a payment, and

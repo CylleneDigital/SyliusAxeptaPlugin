@@ -83,9 +83,11 @@ final readonly class AxeptaNotifyPaymentProvider implements NotifyPaymentProvide
         // Accepted limitation of v1: cards notify over POST. Alternative payment means notify
         // over GET and are not in scope yet - one that does reach this URL may have been paid,
         // which only its signature can tell.
-        $isGetNotification = $request->isMethod('GET') && $request->query->has('Data');
+        // `Data` must be a string: as an array, the verifier would drop it and fall back on the
+        // clear fields, chosen by the sender.
+        $isGetNotification = $request->isMethod('GET') && \is_string($request->query->all()['Data'] ?? null);
 
-        if (!$isGetNotification && (!$request->isMethod('POST') || !$request->request->has('Data'))) {
+        if (!$isGetNotification && (!$request->isMethod('POST') || !\is_string($request->request->all()['Data'] ?? null))) {
             $this->logger->warning('Axepta notification without an encrypted payload: rejected.', [
                 'payment_method' => $paymentMethod->getCode(),
                 'http_method' => $request->getMethod(),
