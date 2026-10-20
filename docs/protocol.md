@@ -72,8 +72,8 @@ the output of OpenSSL's legacy `BF-ECB` and the standard Blowfish vector, not ag
 ### ⚠️ The amount goes out twice, in two units **[observed]**
 
 The amount appears **in cents** inside the encrypted payload, as the documentation says, and **in
-major units** on the visible field - euros on a euro channel. That second field appears in no specification, but the payment page
-rejects cents at that spot.
+major units** on the visible field - euros on a euro channel. That second field appears in no
+specification, but the payment page rejects cents at that spot.
 
 This is observed, unspecified behaviour - hence liable to change, and covered by a test.
 
