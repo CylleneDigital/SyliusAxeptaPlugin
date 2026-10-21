@@ -54,6 +54,12 @@ want to provoke yourself; do not copy a second-hand list, this one included.
 
 Expiry date: any date in the future. Security code: optional.
 
+**On a dedicated test MID, this is the table to pay with.** `4111 1111 1111 1111`, for instance, was
+authorised there **[observed]**. Check the number against the table rather than trusting this line.
+
+**Set the shop channel in euros** when testing a French MID: in euros, a refusal leaves one
+variable fewer to suspect.
+
 ### ⚠️ The demonstration account runs out **[observed]**
 
 **After a dozen transactions it refuses everything** - all cards, all amounts, both payment paths,
@@ -83,6 +89,10 @@ failure. Source:
 
 A **challenge is not a refusal**: it is the authentication screen, a normal step. Do not count these
 cards as payment failures.
+
+⚠️ **On a dedicated test MID, `4000019966199434` came back refused in authorisation**, with
+`22770063` "NOT ALLOWED" **[observed]**. These cards exercise the 3-D Secure journey, not the
+bank's verdict; to take a payment, use the authorisation table.
 
 The page offers eight scenarios, each in a Visa and a Mastercard flavour; the four above are the
 ones a gateway acceptance run needs. Refer to the source for the others.
@@ -139,13 +149,16 @@ checkout, and the run only means something if you know which one you are exercis
 
 1. Place an order through to payment, pick Axepta.
 2. Check the redirect to `paymentpage.axepta.bnpparibas`.
-3. Pay with `4000019966199434` on the demonstration account (see the cards section for why), or with
-   a card from the authorisation table on a dedicated MID.
+3. Pay with `4000019966199434` on the demonstration account, or with a card from the authorisation
+   table on a dedicated MID - `4111 1111 1111 1111`, say.
 4. Check: payment `completed`, order `paid`.
 
-The refusal case expects the same sequence, with a card whose verdict is a failure: payment `failed`,
-**and a new `new` payment** created by Sylius on the order, which stays in `awaiting_payment` - that
-is what lets the customer retry without placing the order again.
+The refusal case expects the same sequence, with a card whose verdict is a failure. The bank sends
+a single `FAILED` notification and returns the customer to the shop, without offering another try on
+its page **[observed]**, on a dedicated test MID; a contract where the bank lets the customer retry
+on the same page may behave otherwise. Then: payment `failed`, **and a new `new` payment** created
+by Sylius on the order, which stays in `awaiting_payment` - that is what lets the customer retry
+without placing the order again.
 
 ⚠️ Provoking a refusal at will is not a given on the demonstration account: see the caveat in the
 test cards section.
@@ -176,7 +189,7 @@ automated tests: they all bear on what the bank actually answers, or on your inf
 | 1 | Nominal cycle, **Payum** path | Payment `completed`, order `paid` |
 | 2 | Nominal cycle, **PaymentRequest** path | Same. To be done if you use that path |
 | 3 | Refused card | Payment `failed`, a fresh attempt possible from the order |
-| 4 | Replayed notification | No effect, and a **200 response** |
+| 4 | Replayed notification | No effect, and a **2xx response**: `204` on the Payum path, `200` on the PaymentRequest path |
 | 5 | Tampered signature | Rejected, no state changed, `warning` log |
 | 6 | **12-character `RefNr`** | The BNP back office does show 12 characters padded with zeroes |
 | 7 | **Accented `OrderDesc`** | An order whose description carries an accent settles: valid signature, readable description on the payment page |
@@ -185,8 +198,10 @@ automated tests: they all bear on what the bank actually answers, or on your inf
 ### Point 4 is checked over a 22-hour window
 
 BNP's documentation establishes that a **404 or a 500 triggers 8 retries spread over ~21 h 36**. It
-does **not** write that a 200 stops them; observation corroborated it - 19 payments notified, one
-notification each.
+does **not** write that a `2xx` stops them; observation corroborates it - across 19, then 10 further
+payments in the sandbox, on both paths (`204` on Payum, `200` on PaymentRequest), each received
+exactly one notification; no retry was seen within the observation window, which did not cover the
+full retry schedule.
 
 The check stays in the runbook because it costs nothing and catches something else: a notification
 URL that would answer badly on your side, on your infrastructure. Provoke a double notification, then
@@ -197,9 +212,11 @@ URL that would answer badly on your side, on your infrastructure. Provoke a doub
 grep -c 'POST /payment-methods/' var/log/prod.log
 ```
 
-One line per legitimate notification. If the counter climbs on its own overnight, the `200` is not to
-blame - your notification URL is not answering what you think: reverse proxy, redirect, firewall.
-Look at the code actually returned to BNP before suspecting the plugin.
+One line per legitimate notification. If the counter climbs on its own overnight, look at the code
+actually returned to BNP before suspecting the plugin. A `2xx` that keeps being retried would be news;
+far more often your notification URL is not answering what you think: reverse proxy, redirect,
+firewall. On the PaymentRequest path, also look for a deliberate `404`: the `axepta` log channel
+says why the notification could not be tied to a payment.
 
 ### Point 7 is the most important of the campaign
 
@@ -250,5 +267,8 @@ when the two contradict each other.
 ## After the campaign
 
 If the keys used may have leaked - a commit, a screenshot, a chat channel - ask BNP for a rotation.
-Mind the payments in flight: a notification signed with the old key arriving after the rotation is
-rejected with a `20100044` or `20120044` code, which the plugin logs with a dedicated message.
+Mind the payments in flight: a notification sent with the old keys arriving after the rotation
+fails authentication and is logged as a `warning`, with the `undecipherable`, `missing_signature`
+or `invalid_signature` reason depending on which key differs. A request signed with the old key is
+refused by BNP with a `20100044` or `20120044` code; a notification carrying such a code that fails
+authentication gets a dedicated message.

@@ -14,7 +14,10 @@ namespace CylleneDigital\SyliusAxeptaPlugin\Axepta\Protocol;
 final readonly class PaymentPageRequestContext
 {
     public function __construct(
-        /** Amount in the smallest unit of the currency, cents for the euro. */
+        /**
+         * Amount in cents. The amount sent in clear is this value divided by 100 with two
+         * decimals: only currencies with two decimals are supported.
+         */
         public int $amountInCents,
         /** ISO 4217 code. */
         public string $currency,
@@ -34,10 +37,11 @@ final readonly class PaymentPageRequestContext
         /** Forces `OrderDesc` to `Test:0000`, as the BNP demonstration account requires. */
         public bool $testMode = false,
         /**
-         * `TransID` already assigned to this payment, to be reused as is.
+         * `TransID` already stored on this payment's details, reused as is; `null` to generate one.
          *
-         * A customer reloading the redirect page replays the capture: without this, every reload
-         * would open one more transaction at BNP for the same payment.
+         * It rarely survives a reload of the payment page: Sylius resets the details of a `new`
+         * payment on every Payum capture, and the PaymentRequest path reuses its capture request
+         * instead.
          */
         public ?string $transactionId = null,
     ) {

@@ -6,9 +6,8 @@ Axepta protocol is the same, only the way Sylius triggers it changes.
 The choice is made per payment method, in the back office, through the `usePayum` boolean of the
 gateway configuration.
 
-> ⚠️ **The choice is frozen at creation time.** Sylius disables the checkbox as soon as the payment
-> method exists - switching a live payment mean would leave the payments already sent to the bank
-> with no mechanism to handle their return.
+> ⚠️ **The back office freezes the choice at creation time.** Sylius disables the checkbox as
+> soon as the payment method exists.
 >
 > To try the other path, **create a second payment method**. Nothing forbids having two on the same
 > gateway: that is in fact how to migrate without interruption, disabling the old one once the
@@ -80,8 +79,8 @@ under the `notify` action. There is therefore never a final state to hit, and th
 out.
 
 In exchange, the URL does not say which payment the notification refers to.
-`AxeptaNotifyPaymentProvider` resolves that from the `TransID` - the only identifier the platform
-returns reliably, since it is part of the response signature.
+`AxeptaNotifyPaymentProvider` resolves that from the `TransID` - the only identifier of ours the
+platform returns reliably, since it is part of the response signature.
 
 The resolution goes through **the inverse of the generator that emitted the identifier**,
 `TransactionIdGeneratorInterface::resolvePaymentIdentifier()`, which reads the payment by primary
@@ -95,18 +94,30 @@ substituting the generator therefore requires supplying its inverse.
 
 ## Answering notifications
 
-The Sylius foundation answers `204 No Content`. This plugin answers **`200 OK`** on its own
-notifications: BNP confirmed that a `200` stops the retries, and nowhere writes that a `204` would
-do. On a payment plugin, the confirmed code beats the gamble.
+On the PaymentRequest path, the Sylius foundation answers `204 No Content`; this plugin answers
+**`200 OK`** to its own notifications there. BNP's documentation only writes that a 404 or a 500
+triggers the retries; that a `2xx` stops them is observed, on both codes - the Payum path answers
+`204`, and no retry was seen there either. The `200` is kept as the most conventional answer, not
+because the `204` was seen to fail.
 
 The decoration only applies to requests of the `axepta` gateway: the other gateways of your
 application keep their behaviour.
 
+On the PaymentRequest path, what cannot be tied to a payment - no encrypted payload (no `Data`
+string), not authenticated, a genuine notification sent over GET, matching no payment of the method,
+or a payment method whose configuration is incomplete - gets a **404** on purpose, before any
+response provider is consulted: Sylius' notification contract leaves no other way out. The bank only
+retries what it sent itself, and those retries recover a genuine notification once its cause is
+fixed. See [protocol.md](protocol.md).
+
 ## Switching from one path to the other
 
-`usePayum` changes on the payment method, with no data migration: the gateway configuration is the
-same on both sides.
+The gateway configuration is the same on both sides: no data migration is needed, but the back
+office does not let you flip `usePayum` on an existing payment method. The supported way is a second
+payment method, as above.
 
-Do not change it while payments are in flight. A payment captured by one path must be notified by
-the same one - the notification URL handed to the bank at capture time does not change
-retroactively.
+`usePayum` only decides how the **next** captures run. A payment is notified on the URL handed to
+the bank at capture time - the Payum token or `/payment-methods/{code}` - and handled by the path
+that URL belongs to. The Payum path, however, only finds gateways whose `usePayum` is still on: a
+payment captured through Payum can no longer be notified once the flag is switched off. One more
+reason the supported way is a second payment method.

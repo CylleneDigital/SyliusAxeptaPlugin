@@ -20,10 +20,8 @@ use Sylius\Component\Core\Model\PaymentInterface;
  * without doing anything, the Payum controller invalidates the token and redirects to the
  * after-payment route, which executes this action.
  *
- * The behaviour is Sylius' own - thank-you page if the payment settled, order page otherwise. The
- * action exists all the same, registered on the `axepta` factory only: without it, an integrator
- * wanting to route differently after an Axepta payment would have to replace Sylius' generic
- * action, and would thereby change the behaviour of all their other gateways.
+ * The behaviour is Sylius' own - thank-you page if the payment settled, order page otherwise; the
+ * action is registered on the `axepta` factory only, so that it never alters the other gateways.
  *
  * @internal
  */

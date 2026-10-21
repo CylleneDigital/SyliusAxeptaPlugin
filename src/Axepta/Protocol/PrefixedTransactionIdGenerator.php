@@ -11,8 +11,8 @@ namespace CylleneDigital\SyliusAxeptaPlugin\Axepta\Protocol;
  * of randomness guarantee uniqueness, including between two attempts on the same payment, without
  * depending on a counter the caller would have to maintain.
  *
- * The whole fits within the 64 allowed characters: the prefix is truncated if need be, never the
- * random part.
+ * The whole fits within the 64 allowed characters: the payment identifier is truncated if need be,
+ * never the prefix nor the random part.
  */
 final readonly class PrefixedTransactionIdGenerator implements TransactionIdGeneratorInterface
 {

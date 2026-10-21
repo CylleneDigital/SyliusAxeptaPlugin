@@ -70,8 +70,8 @@ final readonly class PaymentPageRequestBuilder
             'MerchantID' => $credentials->merchantId,
             'TransID' => $transactionId,
             // The amount goes out twice, in two units: in cents inside the encrypted payload, as
-            // the documentation says, and in euros here - the payment page rejects cents at this
-            // spot. Behaviour observed in the sandbox, absent from the specification.
+            // the documentation says, and in major units here - the payment page rejects cents at
+            // this spot. Behaviour observed in the sandbox, absent from the specification.
             'Amount' => number_format($context->amountInCents / 100, 2, '.', ''),
             'Len' => (string) \strlen($payload),
             'Data' => bin2hex($credentials->cipher()->encrypt($payload)),

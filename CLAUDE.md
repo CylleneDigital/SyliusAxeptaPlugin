@@ -54,10 +54,11 @@ error.
 
 ### The notify payment provider needs an explicit priority
 
-In the test environment Sylius registers a `DummyNotifyPaymentProvider` whose `supports()` answers
-true to everything and which returns **the oldest payment in the database**. Symptom if the priority
-goes: a 200 response, a `completed` notification request, but on the wrong payment - and only the
-first payment in the database appears to work.
+The test application imports Sylius' Behat services, among which a `DummyNotifyPaymentProvider`
+whose `supports()` answers true to everything and which returns **the oldest payment in the
+database**. Symptom if the priority (`10`) goes: a 2xx response, a `completed` notification request,
+but on the wrong payment - and only the first payment in the database appears to work. A host
+provider meant to handle some Axepta notifications likewise needs a priority above `10`.
 
 ## Test database
 
@@ -77,10 +78,14 @@ APP_ENV=test vendor/bin/console sylius:payment:generate-key
 
 - **`BlowfishEcb` stays pure PHP.** `openssl_encrypt('BF-ECB')` returns `false` under OpenSSL 3 -
   Blowfish sits in the legacy provider, disabled by default. Never "simplify" by wiring OpenSSL back
-  in. This is cryptographic code validated against BNP's official vectors.
-- **The notify always answers 200.** A 404 or a 500 triggers 8 BNP retries spread over ~21 h 36.
-  Hence the dedicated `NotifyResponseProviderInterface` and the systematic catching of exceptions on
-  notify. A double notification is the nominal case at BNP, not an anomaly.
+  in. This is cryptographic code validated against legacy OpenSSL `BF-ECB` output and the standard
+  Blowfish vector; BNP's five official vectors only cover the HMAC signature.
+- **A handled notification answers 2xx** - `204` from PayumBundle on Payum, `200` from the
+  decorated `NotifyResponseProviderInterface` on PaymentRequest. A 404 or a 500 triggers 8 BNP
+  retries over ~21 h 36. Hence the catching of exceptions in `NotifyAction` and
+  `NotifyAxeptaPaymentRequestHandler`; a double notification is the nominal case. Deliberate
+  exception: `AxeptaNotifyPaymentProvider` answers 404 to what it cannot tie to a payment - see
+  [`docs/protocol.md`](docs/protocol.md).
 - **The payload goes out in ISO-8859-1**, and `Len` counts the converted bytes. Handled badly, this
   only breaks a fraction of orders - those whose description carries an accent.
 - **Both payment paths are in scope** from v1. Sylius 2 routes according to
@@ -90,16 +95,17 @@ APP_ENV=test vendor/bin/console sylius:payment:generate-key
   `AxeptaGatewayConfigurationType` puts the stored keys back when they come back empty - that is what
   stops a plain save from wiping them. With `false`, a submission failing validation would render
   those stored keys in the page.
-- **Configuration stays in PHP.** Symfony 8 no longer loads XML service definitions, and Behat 4
+- **Service definitions stay in PHP.** Symfony 8 no longer loads XML service definitions, and Behat 4
   (the one Symfony 8 requires) neither YAML configuration nor step annotations: services in
-  `config/services/*.php`, Behat in `behat.dist.php`, steps as `#[Given]` attributes.
+  `config/services/*.php`, Behat in `behat.dist.php`, steps as `#[Given]` attributes. Routes and twig
+  hooks stay in YAML (`config/routes/`, `config/twig_hooks/`).
 - **Sylius 2.1 to 2.3 with one code base.** Where Sylius changed a signature, widen the parameter
   rather than branch on the version - `AxeptaHttpResponseProvider` takes `object $request` because
   2.1 / 2.2 pass a `RequestConfiguration` and 2.3 a `Request`.
 - **New configuration keys must tolerate their own absence**: a gateway configuration written by an
   earlier version does not carry them.
-- The public contract - protocol classes, substitutable interfaces, hookable names, service tags,
-  gateway configuration keys - only breaks in a major version.
+- The public contract - protocol classes, substitutable interfaces, hookable names, gateway
+  configuration keys - only breaks in a major version. The plugin defines no public service tag.
 
 ## The protocol is not written from memory
 

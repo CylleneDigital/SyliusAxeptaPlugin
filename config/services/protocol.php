@@ -14,7 +14,8 @@ use CylleneDigital\SyliusAxeptaPlugin\Axepta\Protocol\ReferenceProviderInterface
 use CylleneDigital\SyliusAxeptaPlugin\Axepta\Protocol\TransactionIdGeneratorInterface;
 use CylleneDigital\SyliusAxeptaPlugin\Provider\CredentialsProvider;
 
-// Protocol layer: no dependency on Sylius nor on Payum.
+// Protocol layer, which depends on neither Sylius nor Payum - plus `CredentialsProvider`, which reads
+// a Sylius payment method and is wired here next to the factory it uses.
 return static function (ContainerConfigurator $container): void {
     $services = $container->services();
 

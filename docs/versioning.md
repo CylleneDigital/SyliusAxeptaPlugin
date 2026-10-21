@@ -21,16 +21,19 @@ A break in any of the following requires a major version.
 
 `TransactionIdGeneratorInterface` declares two methods, and both are part of the contract.
 `resolvePaymentIdentifier()` is how the PaymentRequest path finds the notified payment, by primary
-key, its notification URL being shared across the payment method.
+key, its notification URL being shared across the payment method. The Payum path uses it too, to
+accept the notification of an earlier attempt of a payment, since reopening the payment page
+renews the `TransID`.
 
-A generator emitting identifiers its own inverse does not recognise leaves every notification
-unattached: the bank retries eight times over ~21 h and then gives up, on orders the customer has
-paid for.
+On the PaymentRequest path, a generator emitting identifiers its own inverse does not recognise
+leaves every notification unattached: the bank retries eight times over ~21 h and then gives up, on
+orders the customer has paid for. On the Payum path, only the earlier attempts are lost.
 
 ## Internals
 
 Marked `@internal`, and changeable in a minor version: the Payum actions, the commands, handlers and
-providers of the PaymentRequest path, the renderer and the container extension.
+providers of the PaymentRequest path, the renderer and the container extension. The plugin defines
+no public service tag: the one it declares for its own command providers is internal wiring.
 
 The classes of the `PaymentRequest` adapter additionally carry `@experimental`, mirroring the Sylius
 foundation they build on. Their evolution to follow a Sylius contract change is not a break of our

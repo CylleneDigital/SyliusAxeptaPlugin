@@ -29,8 +29,10 @@ use Sylius\Component\Core\Model\PaymentInterface;
  * hosted by the bank, by way of a self-submitting form.
  *
  * The notify URL is a Payum token, which ties the server-to-server notification back to the right
- * payment. The action is idempotent: an already completed payment triggers nothing, and the
- * `TransID` already assigned is reused rather than opening one more transaction at BNP.
+ * payment. The action is idempotent: an already completed payment triggers nothing, and a
+ * `TransID` still in the details is reused. Sylius, however, resets the details of a payment still
+ * `new` on every Payum capture, so reopening the payment page renews the `TransID`; the earlier
+ * bank page stays payable, and `NotifyAction` accepts its notification.
  *
  * @internal
  */
