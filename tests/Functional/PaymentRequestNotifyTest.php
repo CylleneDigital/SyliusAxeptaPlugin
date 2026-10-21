@@ -204,7 +204,7 @@ final class PaymentRequestNotifyTest extends WebTestCase
         $this->client->request('GET', '/payment-methods/' . $paymentMethod->getCode(), $forger->forge($transactionId));
 
         self::assertSame(Response::HTTP_NOT_FOUND, $this->client->getResponse()->getStatusCode());
-        $this->assertLogged(Level::Error, 'Axepta notification over GET, as alternative payment means send it, is not supported: rejected. The payment page offered more than cards, check `payment_page_url`.');
+        $this->assertLogged(Level::Error, 'Axepta notification over GET, as alternative payment means send it, is not supported: rejected. The payment page offered more than cards, check the bundle setting `payment_page_url`.');
         self::assertSame(PaymentInterface::STATE_NEW, $this->stateOf($payment));
     }
 

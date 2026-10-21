@@ -116,7 +116,8 @@ The gateway configuration is the same on both sides: no data migration is needed
 office does not let you flip `usePayum` on an existing payment method. The supported way is a second
 payment method, as above.
 
-`usePayum` only decides how the **next** captures run. Neither notification route checks it: a
-payment is notified on the URL handed to the bank at capture time - the Payum token or
-`/payment-methods/{code}` - and handled by the path that URL belongs to, whatever `usePayum` says
-by then.
+`usePayum` only decides how the **next** captures run. A payment is notified on the URL handed to
+the bank at capture time - the Payum token or `/payment-methods/{code}` - and handled by the path
+that URL belongs to. The Payum path, however, only finds gateways whose `usePayum` is still on: a
+payment captured through Payum can no longer be notified once the flag is switched off. One more
+reason the supported way is a second payment method.

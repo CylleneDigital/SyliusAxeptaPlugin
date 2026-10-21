@@ -128,8 +128,8 @@ Both paths, unless the column says otherwise:
 | Notification rejected on a signature code `*0044` | `warning`, dedicated message | both |
 | Notification with an unknown status | `warning` | both |
 | Genuine notification over GET (alternative payment means; answered with a 404 on the PaymentRequest path) | `error` | both |
-| Paid notification on a payment that can no longer complete (failed, cancelled) | `error` | both |
-| Notification designating another payment | `error` | Payum |
+| Paid notification on a payment that can no longer complete (failed, cancelled, unknown) | `error` | both |
+| Notification that cannot be tied to this payment | `error` | Payum |
 | Authenticated notification matching no payment of the method (answered with a 404) | `error` | PaymentRequest |
 | Notification on a payment method whose configuration is incomplete (answered with a 404) | `error` | PaymentRequest |
 | Handling failure | `error` | both |
