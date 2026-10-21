@@ -19,7 +19,8 @@ A break in any of the following requires a major version.
 
 The exceptions the protocol layer throws implement `AxeptaException`. A minor version may add
 exception classes, or narrow a thrown type to a subclass of the former one, never widen it. Errors
-raised by PHP itself - a failing entropy source, a type error - are outside that promise.
+raised by PHP itself - a failing entropy source, a type error, a failed assertion - are outside
+that promise.
 
 ### Substituting a generator carries an obligation
 

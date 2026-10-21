@@ -11,9 +11,9 @@ must be written here before it is released, together with the exact manoeuvre to
 Nothing to change in the project.
 
 Every exception the protocol layer throws itself now implements `AxeptaException`, as its docblock
-already promised: the Blowfish cipher throws `InvalidCipherInputException`, the payment page request builder
-`UnusablePaymentPageUrlException`. Both extend `\InvalidArgumentException`, the type thrown before,
-so an existing `catch` keeps working. A `catch (AxeptaException)` now also catches a return URL
+already promised: the Blowfish cipher throws `InvalidCipherInputException`, the payment page
+request builder `UnusablePaymentPageUrlException`. Both extend `\InvalidArgumentException`, the
+type thrown before, so an existing `catch` keeps working. A `catch (AxeptaException)` now also catches a return URL
 refused for carrying an `&`.
 
 ## From 1.1.x to 1.1.2

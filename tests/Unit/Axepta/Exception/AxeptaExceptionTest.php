@@ -17,7 +17,10 @@ final class AxeptaExceptionTest extends TestCase
 {
     public function testEveryExceptionClassCarriesTheMarker(): void
     {
-        foreach (glob(\dirname(__DIR__, 4) . '/src/Axepta/Exception/*.php') ?: [] as $file) {
+        $files = glob(\dirname(__DIR__, 4) . '/src/Axepta/Exception/*.php') ?: [];
+        self::assertNotEmpty($files, 'No exception class found: the check would pass without checking anything.');
+
+        foreach ($files as $file) {
             $class = 'CylleneDigital\\SyliusAxeptaPlugin\\Axepta\\Exception\\' . basename($file, '.php');
 
             if (AxeptaException::class === $class) {
@@ -31,7 +34,8 @@ final class AxeptaExceptionTest extends TestCase
     /**
      * Every `throw` of the protocol layer goes through a named constructor of its own exceptions.
      * Matching that convention rather than hunting SPL class names also catches an imported class,
-     * a line break before it, or a rethrow.
+     * a line break before it, or a rethrow. The class is resolved through the file's imports and
+     * namespace, so that an exception of another library named the same way does not pass.
      */
     public function testTheProtocolLayerOnlyThrowsItsOwnExceptions(): void
     {
@@ -44,9 +48,19 @@ final class AxeptaExceptionTest extends TestCase
                 continue;
             }
 
+            $source = (string) file_get_contents($file->getPathname());
+            $namespace = 1 === preg_match('/^namespace\s+([^;]+);/m', $source, $match) ? $match[1] : '';
+
+            $imports = [];
+            preg_match_all('/^use\s+([\w\\\\]+?)(?:\s+as\s+(\w+))?;/m', $source, $uses, \PREG_SET_ORDER);
+            foreach ($uses as $use) {
+                $alias = isset($use[2]) && '' !== $use[2] ? $use[2] : substr((string) strrchr('\\' . $use[1], '\\'), 1);
+                $imports[$alias] = $use[1];
+            }
+
             // Tokens, not text: comments of this layer use the word "throw".
             $tokens = array_values(array_filter(
-                token_get_all((string) file_get_contents($file->getPathname())),
+                token_get_all($source),
                 static fn (array|string $token): bool => !\is_array($token) || !\in_array($token[0], [\T_WHITESPACE, \T_COMMENT, \T_DOC_COMMENT], true),
             ));
 
@@ -59,7 +73,8 @@ final class AxeptaExceptionTest extends TestCase
                 $operator = $tokens[$i + 2] ?? null;
 
                 if (!\is_array($class) || \T_STRING !== $class[0] || !str_ends_with($class[1], 'Exception') ||
-                    !\is_array($operator) || \T_DOUBLE_COLON !== $operator[0]) {
+                    !\is_array($operator) || \T_DOUBLE_COLON !== $operator[0] ||
+                    !is_subclass_of($imports[$class[1]] ?? $namespace . '\\' . $class[1], AxeptaException::class)) {
                     $offenders[] = $file->getFilename() . ':' . $token[2];
                 }
             }
