@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace CylleneDigital\SyliusAxeptaPlugin\Axepta\Protocol;
 
+use CylleneDigital\SyliusAxeptaPlugin\Axepta\Exception\UnusablePaymentPageUrlException;
+
 /**
  * Composes the request to post to the hosted payment page (`payssl.aspx`).
  *
@@ -117,8 +119,8 @@ final readonly class PaymentPageRequestBuilder
      * truncated URL and a spurious field, without reporting anything.
      *
      * A lone `=` is harmless on the other hand: the platform splits on the first one, which was
-     * verified in the sandbox with a single-parameter URL. That is the case Sylius produces, its
-     * after-payment URL carrying the Payum token.
+     * verified in the sandbox with a single-parameter URL. The URLs the plugin builds carry none
+     * today; an integrator's may.
      *
      * The failure is deliberately loud: a payment leaving with a truncated return URL strands the
      * customer on an error after they have paid.
@@ -126,11 +128,7 @@ final readonly class PaymentPageRequestBuilder
     private function assertUsableInPayload(string $field, ?string $url): void
     {
         if (null !== $url && str_contains($url, '&')) {
-            throw new \InvalidArgumentException(\sprintf(
-                'The URL supplied for "%s" contains an "&", which would cut the Axepta payload. ' .
-                'A return URL may carry only one query parameter.',
-                $field,
-            ));
+            throw UnusablePaymentPageUrlException::containsAmpersand($field);
         }
     }
 

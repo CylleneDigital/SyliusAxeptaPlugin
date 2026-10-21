@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\CylleneDigital\SyliusAxeptaPlugin\Unit\Axepta\Protocol;
 
 use CylleneDigital\SyliusAxeptaPlugin\Axepta\Crypto\HmacSigner;
+use CylleneDigital\SyliusAxeptaPlugin\Axepta\Exception\UnusablePaymentPageUrlException;
 use CylleneDigital\SyliusAxeptaPlugin\Axepta\Protocol\AxeptaCredentials;
 use CylleneDigital\SyliusAxeptaPlugin\Axepta\Protocol\PaddedReferenceProvider;
 use CylleneDigital\SyliusAxeptaPlugin\Axepta\Protocol\PaymentPageRequestBuilder;
@@ -277,7 +278,7 @@ final class PaymentPageRequestBuilderTest extends TestCase
      */
     public function testAReturnUrlWithTwoQueryParametersIsRejected(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(UnusablePaymentPageUrlException::class);
         $this->expectExceptionMessageMatches('/successUrl/');
 
         $this->build(successUrl: 'https://shop.test/after-pay?payum_token=abc123&locale=fr');
