@@ -58,7 +58,8 @@ Expiry date: any date in the future. Security code: optional.
 authorised there **[observed]**. Check the number against the table rather than trusting this line.
 
 **Set the shop channel in euros** when testing a French MID: in euros, a refusal leaves one
-variable fewer to suspect.
+variable fewer to suspect. The test application's fixtures create their channel in euros only; a
+dedicated test MID refused every payment of Sylius' default USD channel **[observed]**.
 
 ### ⚠️ The demonstration account runs out **[observed]**
 
