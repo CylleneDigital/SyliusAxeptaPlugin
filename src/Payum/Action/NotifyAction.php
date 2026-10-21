@@ -30,7 +30,7 @@ use Symfony\Component\HttpFoundation\RequestStack;
  *
  * What follows:
  * - MAC not genuine → no transition, logged as `warning`;
- * - `TransID` designating another payment → no transition, logged as `error`;
+ * - `TransID` that cannot be tied to this payment → no transition, logged as `error`;
  * - payment accepted, on any attempt of the payment → `complete` transition, guarded by `can()`: a
  *   double notification, the nominal case at BNP, is then a no-op;
  * - payment refused on the latest attempt → `fail` transition, which lets the customer retry from
@@ -145,7 +145,7 @@ final class NotifyAction implements ActionInterface, ApiAwareInterface
         }
 
         if ($isGetNotification) {
-            $this->logger->error('Axepta notification over GET, as alternative payment means send it, is not supported: rejected. The payment page offered more than cards, check `payment_page_url`.', [
+            $this->logger->error('Axepta notification over GET, as alternative payment means send it, is not supported: rejected. The payment page offered more than cards, check the bundle setting `payment_page_url`.', [
                 'payment_id' => $payment->getId(),
                 'transaction_id' => $notification->transactionId(),
                 'status' => $notification->status?->value,
@@ -192,7 +192,9 @@ final class NotifyAction implements ActionInterface, ApiAwareInterface
         }
 
         if (!$isLatestAttempt && (null === $designated || !\is_scalar($id) || $designated !== (string) $id)) {
-            $this->logger->error('Axepta notification designating another payment: ignored.', [
+            // Not "another payment": without a usable inverse - a UUID, a substituted generator - an
+            // earlier attempt of this very payment lands here too.
+            $this->logger->error('Axepta notification that cannot be tied to this payment: ignored.', [
                 'payment_id' => $id,
                 'transaction_id' => $received,
                 'status' => $notification->status?->value,
