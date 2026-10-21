@@ -7,6 +7,7 @@ namespace CylleneDigital\SyliusAxeptaPlugin\Payum\Action;
 use CylleneDigital\SyliusAxeptaPlugin\Axepta\Protocol\AxeptaCredentials;
 use CylleneDigital\SyliusAxeptaPlugin\Axepta\Protocol\Notification;
 use CylleneDigital\SyliusAxeptaPlugin\Axepta\Protocol\NotificationVerifier;
+use CylleneDigital\SyliusAxeptaPlugin\Axepta\Protocol\TransactionIdGeneratorInterface;
 use Payum\Core\Action\ActionInterface;
 use Payum\Core\ApiAwareInterface;
 use Payum\Core\Bridge\Spl\ArrayObject;
@@ -31,7 +32,8 @@ use Symfony\Component\HttpFoundation\RequestStack;
  * - MAC not genuine → no transition, logged as `warning`;
  * - payment accepted → `complete` transition, guarded by `can()`: a double notification, the
  *   nominal case at BNP, is then a no-op;
- * - payment refused → `fail` transition, which lets the customer retry from their order.
+ * - payment refused on the latest attempt → `fail` transition, which lets the customer retry from
+ *   their order.
  *
  * @internal
  */
@@ -43,6 +45,7 @@ final class NotifyAction implements ActionInterface, ApiAwareInterface
         private readonly RequestStack $requestStack,
         private readonly StateMachineInterface $stateMachine,
         private readonly NotificationVerifier $notificationVerifier,
+        private readonly TransactionIdGeneratorInterface $transactionIdGenerator,
         private readonly LoggerInterface $logger,
     ) {
     }
@@ -123,22 +126,32 @@ final class NotifyAction implements ActionInterface, ApiAwareInterface
             return;
         }
 
-        // Defence in depth: the notification must carry the `TransID` that *this* payment
-        // emitted.
+        // Defence in depth: the notification must designate *this* payment.
         //
         // Nothing requires it today: the notification token is random and travels inside the
         // encrypted payload, so nobody knows another payment's notify URL. That is the **only**
         // barrier, and it would fall the day this path moved to a fixed URL like the other one. A
         // genuine message captured on a €1 order would then be good for a €5,000 one, the response
         // signature covering neither the amount nor the currency.
-        $expected = $details['transactionId'] ?? null;
+        //
+        // Any attempt of the payment can settle it, not only the last one: Sylius resets the
+        // details of a payment still `new` on every capture, so reopening the payment page emits a
+        // new `TransID` while the bank page of the previous attempt can still be paid.
+        //
+        // The latest attempt is recognised on its stored `TransID` first: the inverse of the
+        // generator only finds an identifier it can carry whole - not a UUID, whose dashes it
+        // strips, nor whatever a substituted generator chooses to return.
         $received = $notification->transactionId();
+        $isLatestAttempt = null !== $received && $received === ($details['transactionId'] ?? null);
+        $designated = null === $received ? null : $this->transactionIdGenerator->resolvePaymentIdentifier($received);
+        $id = $payment->getId();
 
-        if (\is_string($expected) && '' !== $expected && $expected !== $received) {
-            $this->logger->warning('Axepta notification tied to the wrong payment: ignored.', [
-                'payment_id' => $payment->getId(),
-                'expected_transaction_id' => $expected,
+        if (!$isLatestAttempt && (null === $designated || !\is_scalar($id) || $designated !== (string) $id)) {
+            $this->logger->error('Axepta notification designating another payment: ignored.', [
+                'payment_id' => $id,
                 'received_transaction_id' => $received,
+                'status' => $notification->status?->value,
+                'pay_id' => $notification->payId(),
             ]);
 
             return;
@@ -148,6 +161,18 @@ final class NotifyAction implements ActionInterface, ApiAwareInterface
 
         if (null === $transition) {
             $this->logUnknownStatus($payment, $notification);
+
+            return;
+        }
+
+        // A refusal only counts for the latest attempt: the customer may have paid on a newer one
+        // since, and failing the payment would leave that money without an order paid.
+        if (PaymentTransitions::TRANSITION_FAIL === $transition && !$isLatestAttempt) {
+            $this->logger->info('Axepta refusal of a superseded attempt: ignored.', [
+                'payment_id' => $id,
+                'received_transaction_id' => $received,
+                'code' => $notification->code(),
+            ]);
 
             return;
         }
