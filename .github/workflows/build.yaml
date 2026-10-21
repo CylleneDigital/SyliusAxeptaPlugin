@@ -117,39 +117,13 @@ jobs:
                     cache_key: "${{ runner.os }}-php-${{ matrix.php }}-composer-${{ hashFiles('**/composer.json') }}"
                     cache_restore_key: "${{ runner.os }}-php-${{ matrix.php }}-composer-"
                     database: "${{ matrix.database }}"
-                    # Empty on Sylius 2.1: the action then skips its own JS build, done below.
-                    node_version: "${{ matrix.sylius != '~2.1.0' && matrix.node || '' }}"
+                    node_version: "${{ matrix.node }}"
                     php_version: "${{ matrix.php }}"
                     # The PHP-FPM worker behind `symfony server:start` segfaulted at random under OPcache
                     # (Behat 502, "child exited on signal 11"): Behat does not need it.
                     opcache_enable: "no"
                     sylius_version: "${{ matrix.sylius }}"
                     symfony_version: "${{ matrix.symfony }}"
-
-            # Sylius 2.1 lets webpack float to 5.112, which removed the internal module the
-            # `@symfony/stimulus-bridge` 3 loader requires; 2.2 caps it below 5.109. The cap goes in
-            # `package.json.dist`: the `preinstall` script rebuilds `package.json` from it and would
-            # drop a `resolutions` key written anywhere else.
-            -
-                name: Set up Node before Sylius 2.2
-                if: matrix.sylius == '~2.1.0'
-                uses: actions/setup-node@v7
-                with:
-                    node-version: "${{ matrix.node }}"
-
-            -
-                name: Build JS assets with webpack below 5.109 before Sylius 2.2
-                if: matrix.sylius == '~2.1.0'
-                working-directory: vendor/sylius/test-application
-                run: |
-                    node -e '
-                        const fs = require("fs");
-                        const dist = JSON.parse(fs.readFileSync("package.json.dist", "utf-8"));
-                        dist.resolutions = { webpack: ">=5.72 <5.109" };
-                        fs.writeFileSync("package.json.dist", JSON.stringify(dist, null, 4));
-                    '
-                    yarn install
-                    yarn build
 
             # Cheapest first: the cryptography runs in hundredths of a second and catches the most
             # serious regressions.
