@@ -32,3 +32,17 @@ when@test:
             axepta_assertions:
                 type: test
                 channels: [axepta]
+
+# The demonstration channel of Sylius' fixtures sells in USD, which a real Axepta test merchant
+# identifier refuses outright. The bank's merchants settle in euros.
+sylius_fixtures:
+    suites:
+        default:
+            fixtures:
+                channel:
+                    options:
+                        custom:
+                            fashion_web_store:
+                                currencies:
+                                    - 'EUR'
+                                base_currency: 'EUR'

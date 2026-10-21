@@ -251,9 +251,11 @@ What the handling does with that **[design]**:
   the retries are useful there: they recover a genuine notification once its cause is fixed - a key
   rotated on one side only, say. A forged message triggers no retry: the bank only retries what it
   sent itself;
-- two notifications of the same payment arriving at the same instant can still end in a `500`, the
-  second one failing when its changes are written. The bank then retries, and the retry finds the
-  payment already settled: a no-op.
+- two notifications of the same payment arriving at the same instant can both apply `complete`. On
+  either path the second one can then fail when its changes are written, on a version conflict for
+  instance, and answer a `500`. Its database changes are rolled back, but what the transition
+  triggers outside the database - a listener of the shop sending an email, say - may run twice. The
+  bank then retries the `500`, and the retry finds the payment already settled: a no-op.
 
 ### Attempts and the payment page **[observed]**
 

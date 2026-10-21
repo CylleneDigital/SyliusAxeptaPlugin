@@ -70,6 +70,9 @@ Sylius plugins, do not add personal rules to it.
 - Never a real key, MAC or merchant identifier in the code, the tests, the fixtures or an issue.
   Tests use obviously fake values.
 - The codebase is written in **English**, comments and commit messages included.
+- Why the plugin is built the way it is, and what was left as it is on purpose, is in the
+  [decision records](docs/adr/README.md): read the one a change touches first. A pull request that
+  takes a decision, or reverses one, adds a record - an accepted record is superseded, not edited.
 
 ## What does not belong here
 

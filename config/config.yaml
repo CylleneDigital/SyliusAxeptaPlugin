@@ -1,4 +1,4 @@
 # Put your plugin configuration here
-
-imports:
-    - { resource: "twig_hooks/**/*.yaml" }
+#
+# The back-office Twig hooks are not imported here: the bundle extension prepends them itself, and
+# only when Sylius' Twig hooks are installed. An application never needs to import this file.

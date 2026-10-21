@@ -128,8 +128,9 @@ final class CaptureAction implements ActionInterface, ApiAwareInterface
     /**
      * Both behaviour settings are read off the gateway configuration.
      *
-     * They are absent from payment methods created before they were introduced: their absence must
-     * stay silent, otherwise migrating would require a data migration.
+     * Both are optional: a configuration written outside the back-office form, by a fixture or an
+     * import, may not carry them. Their absence stays silent and means test mode off, in the
+     * order's language.
      *
      * @return array{test_mode: bool, language: string|null}
      */
