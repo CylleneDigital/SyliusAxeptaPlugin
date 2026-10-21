@@ -139,7 +139,7 @@ final readonly class AxeptaNotifyPaymentProvider implements NotifyPaymentProvide
         }
 
         if ($isGetNotification) {
-            $this->logger->error('Axepta notification over GET, as alternative payment means send it, is not supported: rejected. The payment page offered more than cards, check `payment_page_url`.', [
+            $this->logger->error('Axepta notification over GET, as alternative payment means send it, is not supported: rejected. The payment page offered more than cards, check the bundle setting `payment_page_url`.', [
                 'payment_method' => $paymentMethod->getCode(),
                 'transaction_id' => $notification->transactionId(),
                 'status' => $notification->status?->value,

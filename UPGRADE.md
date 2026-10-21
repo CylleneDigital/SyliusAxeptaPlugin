@@ -26,6 +26,11 @@ path used to verify the clear parameters of such a message and could apply it; i
 and ignores it now. On the PaymentRequest path, a POST without `Data` or a GET without `Data` used
 to end in a 500 from Sylius' composite notify provider; it gets a 404 now.
 
+`NotificationVerifier::verify()`, for a project calling the protocol layer directly, now ignores
+every clear parameter when `Data` is present, a clear `MerchantID` included: such a message no
+longer ends in a `ForeignMerchant` rejection. Authentication is unchanged, the signature being
+checked against the configured merchant identifier.
+
 ### Transaction identifier generator
 
 The Payum path now calls `TransactionIdGeneratorInterface::resolvePaymentIdentifier()` too, to
@@ -39,6 +44,12 @@ A project that registered its own notify payment provider for Axepta payment met
 GET notifications of alternative payment means, for instance - must give it a priority above 10:
 the plugin's provider now claims every request on an Axepta payment method's notification URL,
 GET included, and answers a 404 to what it cannot use.
+
+### Internal services
+
+`AxeptaNotifyPaymentProvider` takes a logger, and `CaptureAxeptaPaymentRequestHandler` a
+`RequestStack`. Both are internal: a project that redefines either service with its own arguments
+must add them, or the container fails to compile.
 
 ### Credentials
 
@@ -54,15 +65,15 @@ Monitoring keyed on the `axepta` log channel may need adjusting.
 
 On both paths:
 
-- a paid notification that can no longer settle its payment - failed or cancelled - is a new
-  error;
+- a paid notification that can no longer settle its payment - failed, cancelled or unknown - is a
+  new error;
 - a genuine GET notification, as alternative payment means send it, is a new error; one that is
   not authenticated is a warning.
 
 On the Payum path:
 
-- "Axepta notification tied to the wrong payment" (warning) became "Axepta notification
-  designating another payment" (error), and its context keys `expected_transaction_id` and
+- "Axepta notification tied to the wrong payment" (warning) became "Axepta notification that
+  cannot be tied to this payment" (error), and its context keys `expected_transaction_id` and
   `received_transaction_id` became `transaction_id`;
 - "Axepta refusal of a superseded attempt: ignored." is a new info message;
 - "Axepta notification without an encrypted payload: rejected." is a new warning.
