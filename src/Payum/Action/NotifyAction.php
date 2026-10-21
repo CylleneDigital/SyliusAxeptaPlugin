@@ -28,17 +28,20 @@ use Symfony\Component\HttpFoundation\RequestStack;
  * already-handled payment. Every failure is therefore caught and logged, and the request ends
  * normally.
  *
- * Three behaviours follow:
+ * What follows:
  * - MAC not genuine → no transition, logged as `warning`;
- * - payment accepted → `complete` transition, guarded by `can()`: a double notification, the
- *   nominal case at BNP, is then a no-op;
+ * - `TransID` that cannot be tied to this payment → no transition, logged as `error`;
+ * - payment accepted, on any attempt of the payment → `complete` transition, guarded by `can()`: a
+ *   double notification, the nominal case at BNP, is then a no-op;
  * - payment refused on the latest attempt → `fail` transition, which lets the customer retry from
- *   their order.
+ *   their order; refused on a superseded attempt → ignored.
  *
  * @internal
  */
 final class NotifyAction implements ActionInterface, ApiAwareInterface
 {
+    private const PAID_WITHOUT_ORDER = 'Axepta payment notified as paid on a payment that can no longer complete: the bank has taken the money but this payment does not settle the order. Reconcile with the BNP back office, a double charge is possible.';
+
     private AxeptaCredentials $credentials;
 
     public function __construct(
@@ -107,21 +110,47 @@ final class NotifyAction implements ActionInterface, ApiAwareInterface
     {
         $httpRequest = $this->requestStack->getCurrentRequest();
 
+        if (null === $httpRequest) {
+            return;
+        }
+
         // Accepted limitation of v1: cards notify over POST. Alternative payment means notify
-        // over GET and are not in scope yet.
-        if (null === $httpRequest || !$httpRequest->isMethod('POST')) {
+        // over GET and are not in scope yet - one that does reach this URL may have been paid,
+        // which only its signature can tell.
+        $isGetNotification = $httpRequest->isMethod('GET') && \is_string($httpRequest->query->all()['Data'] ?? null);
+
+        // The plugin asks for encrypted responses: a message without a `Data` string is not from
+        // the bank, and its clear fields - chosen by the sender - are not worth verifying.
+        if (!$isGetNotification && (!$httpRequest->isMethod('POST') || !\is_string($httpRequest->request->all()['Data'] ?? null))) {
+            $this->logger->warning('Axepta notification without an encrypted payload: rejected.', [
+                'payment_id' => $payment->getId(),
+                'http_method' => $httpRequest->getMethod(),
+                'client_ip' => $httpRequest->getClientIp(),
+            ]);
+
             return;
         }
 
         // Symfony 7 annotates `all()` as `array<string, mixed>`; 6.4 returns a bare `array`,
         // which static analysis refuses to pass to the verifier.
         /** @var array<string, mixed> $requestParameters */
-        $requestParameters = $httpRequest->request->all();
+        $requestParameters = $isGetNotification ? $httpRequest->query->all() : $httpRequest->request->all();
 
         $notification = $this->notificationVerifier->verify($this->credentials, $requestParameters);
 
         if (!$notification->macValid) {
             $this->logRejectedNotification($payment, $notification, $httpRequest->getClientIp());
+
+            return;
+        }
+
+        if ($isGetNotification) {
+            $this->logger->error('Axepta notification over GET, as alternative payment means send it, is not supported: rejected. The payment page offered more than cards, check the bundle setting `payment_page_url`.', [
+                'payment_id' => $payment->getId(),
+                'transaction_id' => $notification->transactionId(),
+                'status' => $notification->status?->value,
+                'pay_id' => $notification->payId(),
+            ]);
 
             return;
         }
@@ -146,18 +175,35 @@ final class NotifyAction implements ActionInterface, ApiAwareInterface
         $designated = null === $received ? null : $this->transactionIdGenerator->resolvePaymentIdentifier($received);
         $id = $payment->getId();
 
-        if (!$isLatestAttempt && (null === $designated || !\is_scalar($id) || $designated !== (string) $id)) {
-            $this->logger->error('Axepta notification designating another payment: ignored.', [
+        $transition = $this->transitionFor($notification);
+
+        // A refusal only counts for the latest attempt: the customer may have paid on a newer one
+        // since, and failing the payment would leave that money without an order paid.
+        if (PaymentTransitions::TRANSITION_FAIL === $transition && !$isLatestAttempt) {
+            $this->logger->info('Axepta refusal of a superseded attempt: ignored.', [
                 'payment_id' => $id,
-                'received_transaction_id' => $received,
+                'transaction_id' => $received,
                 'status' => $notification->status?->value,
+                'code' => $notification->code(),
                 'pay_id' => $notification->payId(),
             ]);
 
             return;
         }
 
-        $transition = $this->transitionFor($notification);
+        if (!$isLatestAttempt && (null === $designated || !\is_scalar($id) || $designated !== (string) $id)) {
+            // Not "another payment": without a usable inverse - a UUID, a substituted generator - an
+            // earlier attempt of this very payment lands here too.
+            $this->logger->error('Axepta notification that cannot be tied to this payment: ignored.', [
+                'payment_id' => $id,
+                'transaction_id' => $received,
+                'status' => $notification->status?->value,
+                'code' => $notification->code(),
+                'pay_id' => $notification->payId(),
+            ]);
+
+            return;
+        }
 
         if (null === $transition) {
             $this->logUnknownStatus($payment, $notification);
@@ -165,24 +211,26 @@ final class NotifyAction implements ActionInterface, ApiAwareInterface
             return;
         }
 
-        // A refusal only counts for the latest attempt: the customer may have paid on a newer one
-        // since, and failing the payment would leave that money without an order paid.
-        if (PaymentTransitions::TRANSITION_FAIL === $transition && !$isLatestAttempt) {
-            $this->logger->info('Axepta refusal of a superseded attempt: ignored.', [
-                'payment_id' => $id,
-                'received_transaction_id' => $received,
-                'code' => $notification->code(),
-            ]);
-
-            return;
-        }
-
         if (!$this->stateMachine->can($payment, PaymentTransitions::GRAPH, $transition)) {
-            $this->logger->info('Axepta notification with no effect: the transition no longer applies.', [
+            $context = [
                 'payment_id' => $payment->getId(),
                 'payment_state' => $payment->getState(),
                 'transition' => $transition,
-            ]);
+                'status' => $notification->status?->value,
+                'code' => $notification->code(),
+                'xid' => $notification->xid(),
+                'pay_id' => $notification->payId(),
+            ];
+
+            // A payment the bank has taken but that can no longer complete - failed, cancelled -
+            // leaves money without an order paid: that one must reach an operator. A replay on a
+            // payment already completed, or refunded since, is the nominal double notification.
+            if (PaymentTransitions::TRANSITION_COMPLETE === $transition &&
+                !\in_array($payment->getState(), [PaymentInterface::STATE_COMPLETED, PaymentInterface::STATE_REFUNDED], true)) {
+                $this->logger->error(self::PAID_WITHOUT_ORDER, $context);
+            } else {
+                $this->logger->info('Axepta notification with no effect: the transition no longer applies.', $context);
+            }
 
             return;
         }
@@ -200,10 +248,6 @@ final class NotifyAction implements ActionInterface, ApiAwareInterface
         ]);
     }
 
-    /**
-     * Logs a rejection without disclosing anything exploitable: neither the payload, nor its
-     * useful length, nor the slightest hint of what would have made the signature acceptable.
-     */
     /**
      * The transition to apply, or `null` if the bank used a status we do not know.
      *
@@ -233,6 +277,10 @@ final class NotifyAction implements ActionInterface, ApiAwareInterface
         ]);
     }
 
+    /**
+     * Logs a rejection without disclosing anything exploitable: neither the payload, nor its
+     * useful length, nor the slightest hint of what would have made the signature acceptable.
+     */
     private function logRejectedNotification(PaymentInterface $payment, Notification $notification, ?string $clientIp): void
     {
         $this->logger->warning(
@@ -243,7 +291,7 @@ final class NotifyAction implements ActionInterface, ApiAwareInterface
                 'payment_id' => $payment->getId(),
                 'reason' => $notification->rejection?->value,
                 'code' => $notification->code(),
-                'transaction_id' => $notification->transactionId(),
+                'transaction_id' => mb_substr((string) $notification->transactionId(), 0, 64),
                 'client_ip' => $clientIp,
             ],
         );

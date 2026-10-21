@@ -17,6 +17,7 @@ use Sylius\Component\Core\Model\OrderInterface;
 use Sylius\Component\Core\Model\PaymentInterface;
 use Sylius\Component\Payment\Model\GatewayConfigInterface;
 use Sylius\Component\Payment\PaymentRequestTransitions;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
@@ -43,12 +44,23 @@ final readonly class CaptureAxeptaPaymentRequestHandler
         private UrlGeneratorInterface $urlGenerator,
         private ReturnUrlProvider $returnUrlProvider,
         private LoggerInterface $logger,
+        private RequestStack $requestStack,
     ) {
     }
 
     public function __invoke(CaptureAxeptaPaymentRequest $command): void
     {
         $paymentRequest = $this->paymentRequestProvider->provide($command);
+
+        // The redirect page is rendered from what this handler stores, in the same request: Sylius
+        // has no waiting page for an off-site payment. Handled by a worker, the capture comes too
+        // late for the customer, and its absolute URLs are built for the router's default host -
+        // the bank could neither send the customer back nor notify.
+        if (null === $this->requestStack->getCurrentRequest()) {
+            $this->logger->error('Axepta capture handled outside an HTTP request: the payment_request Messenger transport must stay synchronous (sync://, the Sylius default). The customer is not redirected to the bank, and the return and notification URLs do not point at the shop.', [
+                'payment_request_hash' => (string) $paymentRequest->getHash(),
+            ]);
+        }
 
         $payment = $paymentRequest->getPayment();
         \assert($payment instanceof PaymentInterface);
@@ -114,7 +126,7 @@ final readonly class CaptureAxeptaPaymentRequestHandler
     /**
      * @return array{test_mode: bool, language: string|null}
      */
-    private function settings(?GatewayConfigInterface $gatewayConfig): array
+    private function settings(#[\SensitiveParameter] ?GatewayConfigInterface $gatewayConfig): array
     {
         $config = $gatewayConfig?->getConfig() ?? [];
         $language = $config['language'] ?? null;

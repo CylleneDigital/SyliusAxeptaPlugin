@@ -62,6 +62,44 @@ final class CredentialsProviderTest extends KernelTestCase
         self::assertSame('BNP_TEST_MERCHANT', $credentials->merchantId);
     }
 
+    /**
+     * The gateway configuration lives in the database: a payment page URL stored there would
+     * send the card form wherever whoever wrote the row chose, unseen in the back office. Only the
+     * bundle configuration decides the endpoint.
+     */
+    public function testIgnoresAPaymentPageUrlStoredInTheGatewayConfiguration(): void
+    {
+        $credentials = $this->provider()->fromPaymentMethod($this->paymentMethod([
+            'merchant_id' => 'BNP_TEST_MERCHANT',
+            'hmac_key' => 'hmac',
+            'blowfish_key' => 'blowfish',
+            'payment_page_url' => 'https://attacker.invalid/collect.aspx',
+        ]));
+
+        self::assertSame(AxeptaCredentials::DEFAULT_PAYMENT_PAGE_URL, $credentials->paymentPageUrl);
+    }
+
+    /** An exception raised while building the credentials must not carry the keys in its trace. */
+    public function testTheKeysStayOutOfAnExceptionTrace(): void
+    {
+        if (filter_var(\ini_get('zend.exception_ignore_args'), \FILTER_VALIDATE_BOOL)) {
+            self::markTestSkipped('zend.exception_ignore_args is on: traces carry no argument to inspect.');
+        }
+
+        try {
+            $this->provider()->fromArray(['merchant_id' => '', 'hmac_key' => 'HMAC-KEY-IN-TRACE', 'blowfish_key' => 'BLOWFISH-IN-TRACE']);
+            self::fail('Credentials without a merchant identifier must be refused.');
+        } catch (InvalidCredentialsException $exception) {
+            $found = false;
+            $arguments = array_map(static fn (array $frame): mixed => $frame['args'] ?? [], $exception->getTrace());
+            array_walk_recursive($arguments, static function (mixed $value) use (&$found): void {
+                $found = $found || (\is_string($value) && str_contains($value, 'IN-TRACE'));
+            });
+
+            self::assertFalse($found, 'A key appears in the arguments of the exception trace.');
+        }
+    }
+
     public function testRejectsAnEmptyKey(): void
     {
         $this->expectException(InvalidCredentialsException::class);

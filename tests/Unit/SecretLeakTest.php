@@ -55,7 +55,7 @@ final class SecretLeakTest extends TestCase
             if (1 !== preg_match('/^namespace\s+([^;]+);/m', $source, $ns)) {
                 continue;
             }
-            if (1 !== preg_match('/^(?:final\s+)?(?:readonly\s+)?(?:abstract\s+)?class\s+(\w+)/m', $source, $cn)) {
+            if (1 !== preg_match('/^(?:final\s+|readonly\s+|abstract\s+)*class\s+(\w+)/m', $source, $cn)) {
                 continue;
             }
 
@@ -68,7 +68,11 @@ final class SecretLeakTest extends TestCase
         return $classes;
     }
 
-    private const SECRET_PARAMETER_PATTERN = '/key|secret/i';
+    /**
+     * A name suggesting a key, or the gateway configuration as a whole - which carries the keys,
+     * and which an exception trace would otherwise print entire.
+     */
+    private const SECRET_PARAMETER_PATTERN = '/key|secret|^(?:gateway)?config$/i';
 
     /**
      * @return iterable<string, array{class-string}>
@@ -125,6 +129,12 @@ final class SecretLeakTest extends TestCase
     {
         foreach (self::classesHoldingSecrets() as $class) {
             foreach ((new \ReflectionClass($class))->getMethods() as $method) {
+                // A method inherited from a library - Payum's `create(array $config)` - is not
+                // ours to mark.
+                if (!str_starts_with($method->getDeclaringClass()->getName(), 'CylleneDigital\\SyliusAxeptaPlugin\\')) {
+                    continue;
+                }
+
                 foreach ($method->getParameters() as $parameter) {
                     if (1 !== preg_match(self::SECRET_PARAMETER_PATTERN, $parameter->getName())) {
                         continue;

@@ -48,6 +48,7 @@ return static function (ContainerConfigurator $container): void {
             service('router'),
             service('cyllene_digital_sylius_axepta.provider.return_url'),
             service('logger'),
+            service('request_stack'),
         ])
         ->tag('messenger.message_handler', ['bus' => 'sylius.payment_request.command_bus'])
         ->tag('monolog.logger', ['channel' => '%cyllene_digital_sylius_axepta.logger_channel%']);
@@ -75,10 +76,13 @@ return static function (ContainerConfigurator $container): void {
         ->args([service('cyllene_digital_sylius_axepta.renderer.auto_submit_form')])
         ->tag('sylius.payment_request.provider.http_response', ['gateway_factory' => 'axepta']);
 
-    // Explicit priority: in the test environment Sylius registers a `DummyNotifyPaymentProvider`
-    // whose `supports()` answers true to everything and which returns the oldest payment in the
-    // database. Without a priority it captures our notifications and ties them to the wrong payment -
-    // silently, since the response stays 200.
+    // Explicit priority: Sylius' Behat services, which the test application imports, register a
+    // `DummyNotifyPaymentProvider` whose `supports()` answers true to everything and which returns
+    // the oldest payment in the database. Without a priority it captures our notifications and ties
+    // them to the wrong payment - silently, since the response stays 200.
+    //
+    // This provider claims every request on an Axepta payment method: a provider of the host
+    // application meant to handle some of them - GET notifications, say - needs a priority above.
     $services->set('cyllene_digital_sylius_axepta.provider.payment_request.notify_payment', AxeptaNotifyPaymentProvider::class)
         ->args([
             service('sylius.repository.payment'),
@@ -86,9 +90,11 @@ return static function (ContainerConfigurator $container): void {
             service('cyllene_digital_sylius_axepta.protocol.notification_verifier'),
             service(TransactionIdGeneratorInterface::class),
             service('sylius.provider.payment_request.gateway_factory_name'),
+            service('logger'),
             'axepta',
         ])
-        ->tag('sylius.payment_request.payment_notify_provider', ['priority' => 10]);
+        ->tag('sylius.payment_request.payment_notify_provider', ['priority' => 10])
+        ->tag('monolog.logger', ['channel' => '%cyllene_digital_sylius_axepta.logger_channel%']);
 
     // Decoration: the other gateways of the host application keep their response.
     $services->set('cyllene_digital_sylius_axepta.provider.payment_request.notify_response', AxeptaNotifyResponseProvider::class)

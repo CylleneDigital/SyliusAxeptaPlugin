@@ -59,7 +59,7 @@ final readonly class NotificationVerifier
     ];
 
     /**
-     * @param array<string, mixed> $requestParameters raw parameters of the incoming request
+     * @param array<array-key, mixed> $requestParameters raw parameters of the incoming request
      */
     public function verify(AxeptaCredentials $credentials, array $requestParameters): Notification
     {
@@ -67,14 +67,16 @@ final readonly class NotificationVerifier
 
         if (isset($parameters['Data'])) {
             try {
-                // The encrypted payload takes precedence over the clear parameters: only the
-                // former are authenticated by the MAC, and letting a clear `Status` overwrite them
-                // would be an open door.
-                $parameters = array_merge($parameters, $this->decipher(
+                // The encrypted payload replaces the clear parameters, it does not complete them:
+                // only its fields are authenticated by the MAC. Merging would let a clear field the
+                // payload lacks survive - a `Code` or a `TransID` chosen by whoever posts a `Data`
+                // that deciphers to noise, ending up in the rejection log. The bank sends nothing
+                // else in clear than `Data` and `Len` (observed on every notification received).
+                $parameters = $this->decipher(
                     $credentials,
                     $parameters['Data'],
                     isset($parameters['Len']) ? (int) $parameters['Len'] : null,
-                ));
+                );
             } catch (\Throwable) {
                 // Deliberately wide net: anything can land on `Data` - truncation, a substituted
                 // cipher implementation, random bytes from a scanner - and letting anything through
@@ -170,7 +172,7 @@ final readonly class NotificationVerifier
     }
 
     /**
-     * @param array<string, mixed> $parameters
+     * @param array<array-key, mixed> $parameters
      *
      * @return array<string, string>
      */
@@ -182,7 +184,9 @@ final readonly class NotificationVerifier
                 continue;
             }
 
-            $canonical[self::CANONICAL_NAMES[strtolower($name)] ?? $name] = (string) $value;
+            // A form field named `0` reaches here as an integer key: under strict types,
+            // `strtolower()` would throw on it, and the notification URL would answer a 500.
+            $canonical[self::CANONICAL_NAMES[strtolower((string) $name)] ?? (string) $name] = (string) $value;
         }
 
         return $canonical;

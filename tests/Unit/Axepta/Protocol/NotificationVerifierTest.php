@@ -121,7 +121,7 @@ final class NotificationVerifierTest extends TestCase
     }
 
     /**
-     * @return iterable<string, array{array<string, mixed>}>
+     * @return iterable<string, array{array<array-key, mixed>}>
      */
     public static function unusableNotifications(): iterable
     {
@@ -131,10 +131,12 @@ final class NotificationVerifierTest extends TestCase
         yield 'empty request' => [[]];
         yield 'without MAC' => [['Status' => 'OK', 'TransID' => self::TRANSACTION_ID]];
         yield 'MAC vide' => [['Status' => 'OK', 'MAC' => '']];
+        // A form field named `0` arrives as an integer key.
+        yield 'numeric parameter name' => [['Data' => '0011223344556677', 0 => 'x']];
     }
 
     /**
-     * @param array<string, mixed> $parameters
+     * @param array<array-key, mixed> $parameters
      */
     #[DataProvider('unusableNotifications')]
     public function testNeverThrowsOnAnUnusableNotification(array $parameters): void
@@ -172,6 +174,26 @@ final class NotificationVerifierTest extends TestCase
         self::assertTrue($notification->macValid);
         self::assertSame(AxeptaStatus::Failed, $notification->status);
         self::assertFalse($notification->isPaid());
+    }
+
+    /**
+     * A `Data` that deciphers to noise must not let clear fields through: a stranger could otherwise
+     * pick the `Code` and the `TransID` reported in the rejection - a signature code raising the
+     * "check the HMAC key" alarm, a field as large as the request.
+     */
+    public function testClearFieldsDoNotSurviveAPayloadThatDeciphersToNoise(): void
+    {
+        $notification = $this->verify([
+            'Data' => '0000000000000000',
+            'Code' => '20100044',
+            'TransID' => str_repeat('x', 1000),
+            'Status' => 'OK',
+        ]);
+
+        self::assertFalse($notification->macValid);
+        self::assertNull($notification->transactionId());
+        self::assertNull($notification->code());
+        self::assertFalse($notification->signalsSignatureMismatch());
     }
 
     /** A status outside the enum counts as "not paid", never as an error. */
@@ -249,7 +271,7 @@ final class NotificationVerifierTest extends TestCase
     }
 
     /**
-     * @param array<string, mixed> $parameters
+     * @param array<array-key, mixed> $parameters
      */
     private function verify(array $parameters): \CylleneDigital\SyliusAxeptaPlugin\Axepta\Protocol\Notification
     {

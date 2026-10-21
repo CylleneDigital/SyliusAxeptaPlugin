@@ -6,6 +6,7 @@ namespace Tests\CylleneDigital\SyliusAxeptaPlugin\Functional;
 
 use Doctrine\ORM\EntityManagerInterface;
 use Monolog\Handler\TestHandler;
+use Monolog\Level;
 use Monolog\LogRecord;
 use Sylius\Component\Core\Model\PaymentInterface;
 use Sylius\Component\Core\Model\PaymentMethodInterface;
@@ -95,6 +96,30 @@ final class PaymentRequestNotifyTest extends WebTestCase
     }
 
     /**
+     * A paid notification reaching a payment that can no longer complete - failed by an earlier
+     * notification here - means the bank has taken money that settles no order: unlike a replay on
+     * a completed payment, it must stand out as an error.
+     */
+    public function testAPaidNotificationOnAFailedPaymentIsLoggedAsAnError(): void
+    {
+        $this->client->disableReboot();
+
+        [$paymentMethod, $payment, $forger, $transactionId] = $this->pendingCapture('paidonfailed');
+
+        $this->notify($paymentMethod, $forger->forge($transactionId, 'FAILED', '22720040'));
+        self::assertSame(PaymentInterface::STATE_FAILED, $this->stateOf($payment));
+
+        $this->notify($paymentMethod, $forger->forge($transactionId));
+
+        self::assertSame(Response::HTTP_OK, $this->client->getResponse()->getStatusCode());
+        self::assertSame(PaymentInterface::STATE_FAILED, $this->stateOf($payment));
+        $this->assertLogged(
+            Level::Error,
+            'Axepta payment notified as paid on a payment that can no longer complete: the bank has taken the money but this payment does not settle the order. Reconcile with the BNP back office, a double charge is possible.',
+        );
+    }
+
+    /**
      * The status enum is not exhaustive from the platform's point of view, and it may introduce
      * values without notice. Treating the unknown as a failure would mark as refused a payment that
      * may have been taken - the more destructive of the two possible behaviours.
@@ -132,44 +157,156 @@ final class PaymentRequestNotifyTest extends WebTestCase
     /**
      * Signature not genuine: no state changed.
      *
-     * The notification cannot be tied to any payment, which yields a 404. That does not contradict
-     * the "never a 404 on the notification URL" rule: the retries a 404 triggers are emitted by the
-     * bank, and the bank does not emit forged messages. An attacker receiving this 404 has
-     * triggered nothing.
+     * The notification cannot be tied to any payment, which yields a 404. The retries a 404
+     * triggers are emitted by the bank, and the bank does not emit forged messages: an attacker
+     * receiving this 404 has triggered nothing.
      */
     public function testATamperedNotificationLeavesThePaymentUntouched(): void
     {
+        $this->client->disableReboot();
+
         [$paymentMethod, $payment, $forger, $transactionId] = $this->pendingCapture('tampered');
 
         $this->notify($paymentMethod, $forger->forgeWithTamperedStatus($transactionId));
 
         self::assertSame(Response::HTTP_NOT_FOUND, $this->client->getResponse()->getStatusCode());
+        $this->assertLogged(Level::Warning, 'Axepta notification rejected, no payment looked up.');
         self::assertSame(PaymentInterface::STATE_NEW, $this->stateOf($payment));
     }
 
-    /** An unreadable `Data` must produce neither an exception nor a 500. */
+    /** An unreadable `Data` is rejected like any unauthenticated message: a 404, never a 500. */
     public function testAnUnreadablePayloadIsRejectedWithoutError(): void
     {
+        $this->client->disableReboot();
+
         [$paymentMethod, $payment] = $this->pendingCapture('unreadable');
 
         $this->client->request('POST', '/payment-methods/' . $paymentMethod->getCode(), ['Data' => 'pas-de-l-hexa']);
 
-        self::assertLessThan(500, $this->client->getResponse()->getStatusCode());
+        self::assertSame(Response::HTTP_NOT_FOUND, $this->client->getResponse()->getStatusCode());
+        $this->assertLogged(Level::Warning, 'Axepta notification rejected, no payment looked up.');
         self::assertSame(PaymentInterface::STATE_NEW, $this->stateOf($payment));
     }
 
     /**
      * Documented limitation of v1: cards notify over POST. A GET notification, the one used by
-     * alternative payment means, must change nothing, but must not break loudly either.
+     * alternative payment means, changes nothing and is rejected with a 404. Left unclaimed, it
+     * would reach Sylius' composite provider, which answers a 500 for want of a provider - in a
+     * real shop; here the test application's dummy provider would take it instead. Money may have
+     * been taken: it is logged as an error.
      */
     public function testAGetNotificationHasNoEffect(): void
     {
+        $this->client->disableReboot();
+
         [$paymentMethod, $payment, $forger, $transactionId] = $this->pendingCapture('get');
 
         $this->client->request('GET', '/payment-methods/' . $paymentMethod->getCode(), $forger->forge($transactionId));
 
-        self::assertLessThan(500, $this->client->getResponse()->getStatusCode());
+        self::assertSame(Response::HTTP_NOT_FOUND, $this->client->getResponse()->getStatusCode());
+        $this->assertLogged(Level::Error, 'Axepta notification over GET, as alternative payment means send it, is not supported: rejected. The payment page offered more than cards, check the bundle setting `payment_page_url`.');
         self::assertSame(PaymentInterface::STATE_NEW, $this->stateOf($payment));
+    }
+
+    /** A GET nobody signed is internet noise like any other: a warning, not an error. */
+    public function testAnUnauthenticatedGetNotificationIsOnlyAWarning(): void
+    {
+        $this->client->disableReboot();
+
+        [$paymentMethod, $payment] = $this->pendingCapture('getnoise');
+
+        $this->client->request('GET', '/payment-methods/' . $paymentMethod->getCode(), ['Data' => '0011223344556677']);
+
+        self::assertSame(Response::HTTP_NOT_FOUND, $this->client->getResponse()->getStatusCode());
+        $this->assertLogged(Level::Warning, 'Axepta notification rejected, no payment looked up.');
+        self::assertSame(PaymentInterface::STATE_NEW, $this->stateOf($payment));
+    }
+
+    /** A POST without `Data` does not reach Sylius' composite provider either. */
+    public function testAPostWithoutPayloadIsRejectedWithoutError(): void
+    {
+        $this->client->disableReboot();
+
+        [$paymentMethod, $payment] = $this->pendingCapture('nopayload');
+
+        $this->client->request('POST', '/payment-methods/' . $paymentMethod->getCode(), ['foo' => 'bar']);
+
+        self::assertSame(Response::HTTP_NOT_FOUND, $this->client->getResponse()->getStatusCode());
+        $this->assertLogged(Level::Warning, 'Axepta notification without an encrypted payload: rejected.');
+        self::assertSame(PaymentInterface::STATE_NEW, $this->stateOf($payment));
+    }
+
+    /** A field named `0` once made the verifier throw: a 500 anyone could trigger. */
+    public function testANumericParameterNameIsAnOrdinaryRejection(): void
+    {
+        $this->client->disableReboot();
+
+        [$paymentMethod, $payment] = $this->pendingCapture('numericname');
+
+        $this->client->request('POST', '/payment-methods/' . $paymentMethod->getCode(), ['Data' => '0011223344556677', 0 => 'x']);
+
+        self::assertSame(Response::HTTP_NOT_FOUND, $this->client->getResponse()->getStatusCode());
+        $this->assertLogged(Level::Warning, 'Axepta notification rejected, no payment looked up.');
+        self::assertSame(PaymentInterface::STATE_NEW, $this->stateOf($payment));
+    }
+
+    /** A `Data` sent as an array is no payload: the clear fields beside it are not even verified. */
+    public function testAPayloadSentAsAnArrayIsRejectedUnverified(): void
+    {
+        $this->client->disableReboot();
+
+        [$paymentMethod, $payment] = $this->pendingCapture('dataarray');
+
+        $this->client->request('POST', '/payment-methods/' . $paymentMethod->getCode(), ['Data' => ['00'], 'Code' => '20100044']);
+
+        self::assertSame(Response::HTTP_NOT_FOUND, $this->client->getResponse()->getStatusCode());
+        $this->assertLogged(Level::Warning, 'Axepta notification without an encrypted payload: rejected.');
+        self::assertSame(PaymentInterface::STATE_NEW, $this->stateOf($payment));
+    }
+
+    /**
+     * Keys missing from the gateway configuration used to throw from the credentials, a 500 logged
+     * nowhere near Axepta. It is the same 404 as any message that cannot be tied to a payment, and
+     * an error on the Axepta channel: no payment of that method can be verified until it is fixed.
+     */
+    public function testANotificationOnAnIncompletelyConfiguredMethodIsRejectedWithoutError(): void
+    {
+        $this->client->disableReboot();
+
+        [$paymentMethod, $payment, $forger, $transactionId] = $this->pendingCapture('incomplete');
+        $notification = $forger->forge($transactionId);
+
+        $gatewayConfig = $paymentMethod->getGatewayConfig();
+        \assert(null !== $gatewayConfig);
+        $gatewayConfig->setConfig(['merchant_id' => PaymentScenario::MERCHANT_ID, 'hmac_key' => '', 'blowfish_key' => PaymentScenario::BLOWFISH_KEY]);
+        $this->scenario->flush();
+
+        $this->notify($paymentMethod, $notification);
+
+        self::assertSame(Response::HTTP_NOT_FOUND, $this->client->getResponse()->getStatusCode());
+        $this->assertLogged(Level::Error, 'Axepta notification on a payment method whose configuration is incomplete: rejected.');
+        self::assertSame(PaymentInterface::STATE_NEW, $this->stateOf($payment));
+    }
+
+    /**
+     * A genuine notification addressed to another Axepta payment method must not touch that
+     * method's payment, possibly configured with other keys.
+     */
+    public function testAGenuineNotificationForAnotherMethodsPaymentIsRejected(): void
+    {
+        $this->client->disableReboot();
+
+        [, $otherPayment, , $otherTransactionId] = $this->pendingCapture('othermethod');
+        [$paymentMethod] = $this->pendingCapture('thismethod');
+
+        $this->notify($paymentMethod, $this->scenario->forger($paymentMethod)->forge($otherTransactionId));
+
+        self::assertSame(Response::HTTP_NOT_FOUND, $this->client->getResponse()->getStatusCode());
+        $this->assertLogged(
+            Level::Error,
+            'Authenticated Axepta notification matching no payment of this method: rejected with a 404, the bank retries for ~21 h. Find the payment or settle it by hand.',
+        );
+        self::assertSame(PaymentInterface::STATE_NEW, $this->stateOf($otherPayment));
     }
 
     /**
@@ -180,6 +317,8 @@ final class PaymentRequestNotifyTest extends WebTestCase
      */
     public function testAnUnknownTransactionIsNotAttachedToAnyPayment(): void
     {
+        $this->client->disableReboot();
+
         [$paymentMethod, $payment, $forger] = $this->pendingCapture('known');
 
         // A genuine notification, but designating a payment that does not exist.
@@ -190,6 +329,10 @@ final class PaymentRequestNotifyTest extends WebTestCase
         );
 
         self::assertSame(Response::HTTP_NOT_FOUND, $this->client->getResponse()->getStatusCode());
+        $this->assertLogged(
+            Level::Error,
+            'Authenticated Axepta notification matching no payment of this method: rejected with a 404, the bank retries for ~21 h. Find the payment or settle it by hand.',
+        );
         self::assertSame(PaymentInterface::STATE_NEW, $this->stateOf($payment));
     }
 
@@ -237,11 +380,28 @@ final class PaymentRequestNotifyTest extends WebTestCase
      */
     private function axeptaMessages(): array
     {
+        return array_values(
+            array_map(static fn (LogRecord $record): string => $record->message, $this->axeptaHandler()->getRecords()),
+        );
+    }
+
+    /**
+     * The level is what tells noise from money at stake: asserting the message alone would let a
+     * downgrade from error to warning go unnoticed.
+     */
+    private function assertLogged(Level $level, string $message): void
+    {
+        self::assertTrue(
+            $this->axeptaHandler()->hasRecord($message, $level),
+            \sprintf('Expected "%s" logged at %s on the axepta channel; got: %s', $message, $level->getName(), implode(' | ', $this->axeptaMessages())),
+        );
+    }
+
+    private function axeptaHandler(): TestHandler
+    {
         $handler = self::getContainer()->get('monolog.handler.axepta_assertions');
         \assert($handler instanceof TestHandler);
 
-        return array_values(
-            array_map(static fn (LogRecord $record): string => $record->message, $handler->getRecords()),
-        );
+        return $handler;
     }
 }

@@ -40,15 +40,16 @@ final readonly class CredentialsProvider
     /**
      * @param array<string, mixed> $config
      */
-    public function fromArray(array $config): AxeptaCredentials
+    public function fromArray(#[\SensitiveParameter] array $config): AxeptaCredentials
     {
         return new AxeptaCredentials(
             $this->string($config, 'merchant_id'),
             $this->string($config, 'hmac_key'),
             $this->string($config, 'blowfish_key'),
-            // Payment methods created before this setting was introduced do not carry the key:
-            // its absence must stay silent, otherwise migrating would require a data migration.
-            $this->string($config, 'payment_page_url') ?: $this->paymentPageUrl,
+            // The endpoint comes from the bundle configuration only, never from the gateway
+            // configuration: that one lives in the database, where whoever can write a row could
+            // send the card form to a page of their choosing - invisibly, the form not showing it.
+            $this->paymentPageUrl,
             $this->cipherFactory,
         );
     }
@@ -56,7 +57,7 @@ final readonly class CredentialsProvider
     /**
      * @param array<string, mixed> $config
      */
-    private function string(array $config, string $name): string
+    private function string(#[\SensitiveParameter] array $config, string $name): string
     {
         $value = $config[$name] ?? null;
 
