@@ -8,13 +8,13 @@ must be written here before it is released, together with the exact manoeuvre to
 
 ## From 1.1.x to 1.2
 
-Nothing to change in the project.
+Nothing to change in the project, unless it serialises an `HmacSigner` (see below).
 
 Every exception the protocol layer throws itself now implements `AxeptaException`, as its docblock
 already promised: the Blowfish cipher throws `InvalidCipherInputException`, the payment page
 request builder `UnusablePaymentPageUrlException`. Both extend `\InvalidArgumentException`, the
-type thrown before, so an existing `catch` keeps working. A `catch (AxeptaException)` now also catches a return URL
-refused for carrying an `&`.
+type thrown before, so an existing `catch` keeps working. A `catch (AxeptaException)` now also
+catches a return URL refused for carrying an `&`.
 
 `HmacSigner` can no longer be serialised: like `AxeptaCredentials` since 1.1.2, it holds its key in
 `\SensitiveParameterValue`. Serialising it wrote the key in clear.
