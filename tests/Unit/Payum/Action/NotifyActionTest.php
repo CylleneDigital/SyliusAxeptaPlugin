@@ -71,6 +71,7 @@ final class NotifyActionTest extends TestCase
         self::assertSame(PaymentInterface::STATE_NEW, $payment->getState());
         // Only the bank can sign it: money may be at stake, not internet noise.
         self::assertSame(['error'], $logger->levels);
+        self::assertSame(['Axepta notification that cannot be tied to this payment: ignored.'], $logger->messages);
     }
 
     /**
@@ -211,6 +212,7 @@ final class NotifyActionTest extends TestCase
     {
         yield 'failed' => [PaymentInterface::STATE_FAILED, 'error'];
         yield 'cancelled' => [PaymentInterface::STATE_CANCELLED, 'error'];
+        yield 'unknown' => [PaymentInterface::STATE_UNKNOWN, 'error'];
         // The nominal double notification, and a replay after a refund: nothing to report.
         yield 'completed' => [PaymentInterface::STATE_COMPLETED, 'info'];
         yield 'refunded' => [PaymentInterface::STATE_REFUNDED, 'info'];
@@ -242,8 +244,77 @@ final class NotifyActionTest extends TestCase
         $stateMachine = $this->createMock(StateMachineInterface::class);
         $stateMachine->expects(self::never())->method('apply');
 
-        $this->action($this->notifiedWith('not-issued-by-this-plugin'), $stateMachine)
+        $logger = $this->recordingLogger();
+
+        $this->action($this->notifiedWith('not-issued-by-this-plugin'), $stateMachine, $logger)
             ->execute($this->notify($this->payment(1), self::LATEST_ATTEMPT));
+
+        self::assertSame(['error'], $logger->levels);
+        self::assertSame(['Axepta notification that cannot be tied to this payment: ignored.'], $logger->messages);
+    }
+
+    /**
+     * A notification that carries no `TransID` designates nothing: it cannot be taken for the
+     * latest attempt, whose stored identifier is never empty.
+     */
+    public function testANotificationWithoutTransactionIdIsIgnored(): void
+    {
+        $stateMachine = $this->createMock(StateMachineInterface::class);
+        $stateMachine->expects(self::never())->method('apply');
+
+        $logger = $this->recordingLogger();
+
+        $this->action($this->notifiedWith(null), $stateMachine, $logger)
+            ->execute($this->notify($this->payment(1), self::LATEST_ATTEMPT));
+
+        self::assertSame(['error'], $logger->levels);
+    }
+
+    /** The inverse of the generator suffices when no `TransID` was stored for the payment. */
+    public function testAPaymentWithoutStoredTransactionIdIsSettledByItsOwnNotification(): void
+    {
+        $stateMachine = $this->createMock(StateMachineInterface::class);
+        $stateMachine->method('can')->willReturn(true);
+        $stateMachine->expects(self::once())
+            ->method('apply')
+            ->with(self::anything(), PaymentTransitions::GRAPH, PaymentTransitions::TRANSITION_COMPLETE);
+
+        $notify = new Notify($this->payment(1));
+        $notify->setModel(new \ArrayObject([]));
+
+        $this->action($this->notifiedWith(self::LATEST_ATTEMPT), $stateMachine)->execute($notify);
+    }
+
+    /**
+     * An earlier attempt the generator cannot resolve - a UUID payment here - is not paid by its
+     * notification, which is logged without suggesting another payment; its refusal stays a
+     * superseded attempt.
+     *
+     * @return iterable<string, array{string, string, string}>
+     */
+    public static function unresolvableEarlierAttempts(): iterable
+    {
+        yield 'paid' => ['OK', 'error', 'Axepta notification that cannot be tied to this payment: ignored.'];
+        yield 'refused' => ['FAILED', 'info', 'Axepta refusal of a superseded attempt: ignored.'];
+    }
+
+    #[DataProvider('unresolvableEarlierAttempts')]
+    public function testAnEarlierAttemptTheGeneratorCannotResolveIsNotApplied(string $status, string $expectedLevel, string $expectedMessage): void
+    {
+        $stateMachine = $this->createMock(StateMachineInterface::class);
+        $stateMachine->method('can')->willReturn(true);
+        $stateMachine->expects(self::never())->method('apply');
+
+        $logger = $this->recordingLogger();
+
+        $this->action($this->notifiedWith('sylius-550e8400e29b41d4a716446655440000-0123456789abcdef', $status), $stateMachine, $logger)
+            ->execute($this->notify(
+                $this->payment('550e8400-e29b-41d4-a716-446655440000'),
+                'sylius-550e8400e29b41d4a716446655440000-fedcba9876543210',
+            ));
+
+        self::assertSame([$expectedLevel], $logger->levels);
+        self::assertSame([$expectedMessage], $logger->messages);
     }
 
     private function action(RequestStack $requestStack, StateMachineInterface $stateMachine, ?LoggerInterface $logger = null): NotifyAction
@@ -261,27 +332,27 @@ final class NotifyActionTest extends TestCase
     }
 
     /** A genuine notification, as the bank posts it. */
-    private function notifiedWith(string $transactionId, string $status = 'OK', string $method = 'POST'): RequestStack
+    private function notifiedWith(?string $transactionId, string $status = 'OK', string $method = 'POST'): RequestStack
     {
         $credentials = $this->credentials();
         $code = 'OK' === $status ? '00000000' : '22720040';
 
         $mac = strtoupper($credentials->signer()->sign([
             'payid-quelconque',
-            $transactionId,
+            $transactionId ?? '',
             'BNP_TEST_MERCHANT',
             $status,
             $code,
         ]));
 
-        $payload = implode('&', [
+        $payload = implode('&', array_filter([
             'PayID=payid-quelconque',
-            'TransID=' . $transactionId,
+            null === $transactionId ? null : 'TransID=' . $transactionId,
             'MerchantID=BNP_TEST_MERCHANT',
             'Status=' . $status,
             'Code=' . $code,
             'MAC=' . $mac,
-        ]);
+        ]));
 
         return $this->requestWith($method, ['Data' => bin2hex($credentials->cipher()->encrypt($payload))]);
     }
