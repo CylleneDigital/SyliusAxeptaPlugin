@@ -46,6 +46,11 @@ docker run --rm -v "$PWD":/app -w /app/vendor/sylius/test-application \
   -u "$(id -u):$(id -g)" -e HOME=/tmp node:22-alpine sh -c "yarn install && yarn build"
 ```
 
+`tests/TestApplication/package.json` raises `@symfony/stimulus-bridge` to `^4.0.2`: the test
+application's `preinstall` merges it into its own `package.json`. The 3.x loader requires
+`webpack/lib/dependencies/LoaderDependency`, gone since webpack 5.112, and the Sylius 2.1 front
+build fails on it (`yarn install` runs without a lockfile).
+
 ### A file added under `config/services/` is not seen by `cache:clear`
 
 `config/services.php` imports `services/*.php`, and the `GlobResource` keeps the list frozen. You need
