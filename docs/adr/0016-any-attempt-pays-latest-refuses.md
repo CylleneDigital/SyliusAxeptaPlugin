@@ -16,8 +16,8 @@ identifier, not the amount nor the currency.
 On the Payum path, a paid notification of any attempt of the payment is applied: its transaction
 identifier is either the latest one stored on the payment, or one the generator's inverse resolves
 to this payment. A refusal only counts for the latest attempt: a refusal of a superseded one is
-ignored, the customer may have paid on a newer one since. A paid notification designating another
-payment is ignored and logged as an error.
+ignored, the customer may have paid on a newer one since. A paid notification that cannot be tied
+to the payment either way is ignored and logged as an error.
 
 The PaymentRequest path needs no such rule: Sylius reuses the capture request while it is not final,
 so a payment keeps a single transaction identifier.
@@ -29,7 +29,8 @@ so a payment keeps a single transaction identifier.
 - A genuine notification captured on one payment cannot settle another, even one with a higher
   amount.
 - Recognising an earlier attempt relies on the generator's inverse, which a substituted generator
-  has to supply ([0010](0010-bank-identifiers.md)).
+  has to supply ([0010](0010-bank-identifiers.md)). A payment identifier the generator cannot
+  carry whole, such as a UUID, limits a payment to its latest attempt.
 
 ## Related
 
