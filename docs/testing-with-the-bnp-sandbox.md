@@ -268,7 +268,8 @@ when the two contradict each other.
 ## After the campaign
 
 If the keys used may have leaked - a commit, a screenshot, a chat channel - ask BNP for a rotation.
-Mind the payments in flight: a notification signed with the old key arriving after the rotation
-fails the signature check and is logged as a `warning` with the `invalid_signature` reason. A
-request signed with the old key is refused by BNP with a `20100044` or `20120044` code, which the
-plugin logs with a dedicated message.
+Mind the payments in flight: a notification sent with the old keys arriving after the rotation
+fails authentication and is logged as a `warning`, with the `undecipherable`, `missing_signature`
+or `invalid_signature` reason depending on which key differs. A request signed with the old key is
+refused by BNP with a `20100044` or `20120044` code; a notification carrying such a code that fails
+authentication gets a dedicated message.

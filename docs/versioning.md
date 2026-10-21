@@ -22,8 +22,8 @@ leak, documented as such in [UPGRADE.md](../UPGRADE.md).
 
 The exceptions the protocol layer throws implement `AxeptaException`. A minor version may add
 exception classes, or narrow a thrown type to a subclass of the former one, never widen it. Errors
-raised by PHP itself - a failing entropy source, a type error - and whatever a substituted
-implementation of a protocol interface throws are outside that promise.
+raised by PHP itself - a failing entropy source, a type error, a failed assertion - and whatever a
+substituted implementation of a protocol interface throws are outside that promise.
 
 ### Substituting a generator carries an obligation
 

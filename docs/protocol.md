@@ -264,7 +264,7 @@ What the handling does with that **[design]**:
   bank then notifies with that earlier `TransID`. The plugin therefore accepts the payment of any
   attempt of a payment, and only counts a refusal on the latest one **[design]**.
 - On the PaymentRequest path, Sylius reuses the capture request while it is not final: the payment
-  keeps a single `TransID` **[design]**.
+  keeps a single `TransID` (Sylius' behaviour).
 - **After a refused card, the bank sends one `FAILED` notification** and returns the customer to the
   shop. The customer is not offered another try on the same bank page (seen on a dedicated test
   MID); a fresh attempt starts from the order.
