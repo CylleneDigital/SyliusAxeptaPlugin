@@ -202,6 +202,42 @@ final class PaymentPageRequestBuilderTest extends TestCase
     }
 
     /**
+     * Under `entity`, mbstring writes an unrepresentable character as `&#x20AC;`: an `&` the
+     * description cleaning never saw. The server setting must neither leak in nor be changed.
+     */
+    #[DataProvider('substituteCharacterSettings')]
+    public function testUnrepresentableCharactersBecomeAQuestionMarkWhateverTheMbstringSetting(int|string $setting): void
+    {
+        $previous = mb_substitute_character();
+        mb_substitute_character($setting);
+        $settingInForce = mb_substitute_character();
+
+        try {
+            $request = $this->build(orderDescription: 'Prix 10 €');
+
+            self::assertSame($settingInForce, mb_substitute_character(), 'The server setting must be restored.');
+        } finally {
+            mb_substitute_character($previous);
+        }
+
+        $fields = $this->parse($request->fields['Data']);
+
+        self::assertSame('Prix 10 ?', $fields['OrderDesc'] ?? null);
+        self::assertArrayHasKey('MsgVer', $fields, 'The description must not swallow the fields that follow.');
+    }
+
+    /**
+     * @return iterable<string, array{int|string}>
+     */
+    public static function substituteCharacterSettings(): iterable
+    {
+        yield 'entity' => ['entity'];
+        yield 'long' => ['long'];
+        yield 'none' => ['none'];
+        yield 'question mark' => [0x3F];
+    }
+
+    /**
      * Reads the payload back the way the platform will, to check it splits cleanly.
      *
      * @return array<string, string>
