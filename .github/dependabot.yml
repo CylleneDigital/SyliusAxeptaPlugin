@@ -11,6 +11,10 @@ updates:
     composer:
       patterns: ["*"]
       update-types: [minor, patch]
+  ignore:
+  # PHPUnit 12 requires PHP 8.3 and PHPUnit 13 PHP 8.4, and the plugin still supports PHP 8.2.
+  - dependency-name: phpunit/phpunit
+    versions: [">=12"]
 - package-ecosystem: github-actions
   directory: "/"
   schedule:
