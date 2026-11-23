@@ -106,6 +106,13 @@ jobs:
                 if: matrix.sylius != '~2.3.0'
                 run: composer require --no-update --no-interaction "doctrine/orm:^2.20 || >=3.6 <3.7"
 
+            # Sylius 2.1 no longer receives security fixes, and Composer refuses to resolve versions
+            # affected by an advisory. The job checks compatibility; it does not run a shop.
+            -
+                name: Allow insecure versions on Sylius 2.1
+                if: matrix.sylius == '~2.1.0'
+                run: composer config audit.block-insecure false
+
             -
                 name: Build Sylius Test Application
                 uses: SyliusLabs/BuildTestAppAction@c3b108b5f3c299c55f429a8cf0ed88734d4f4979 # v4.3.1
